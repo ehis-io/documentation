@@ -1,7 +1,7 @@
 ---
-title: "Withdrawal Endpoints — Quote and Execute"
+title: "Customer Withdrawal — Quote Fee and Execute Payout"
 sidebarTitle: "Withdraw"
-description: "GET a withdrawal quote with fees, then POST to pay out a customer's fiat balance to their default linked bank account."
+description: "Fetch a live withdrawal quote showing gross amount, fee, and net payout, then submit the withdrawal to transfer funds to the customer's bank account."
 ---
 
 Withdrawals move a customer's fiat balance to their linked bank account. The flow is always two steps: first fetch a quote to show the customer the net amount they will receive after fees, then submit the withdrawal. Both steps require the `customerId` path parameter and your partner API key.

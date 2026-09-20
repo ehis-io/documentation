@@ -1,7 +1,7 @@
 ---
-title: "Funding Charge Endpoints — Initiate and List"
+title: "Funding Charge — Initiate and List Fiat Collections"
 sidebarTitle: "Funding Charge"
-description: "Start a one-off fiat funding charge via bank transfer or EFT (ZAR), and list a customer's funding charge history."
+description: "Start a one-off fiat funding charge via bank transfer or EFT to top up a customer's fiat balance, and retrieve the customer's full charge history."
 ---
 
 Funding charges let you top up a customer's fiat balance using a one-off bank-initiated payment. Two collection methods are supported: `bank_transfer`, which returns static bank account details the customer uses to push a payment, and `eft`, which returns a redirect URL for the customer to authorise the debit directly (ZAR only). After initiating, poll or listen for a webhook to confirm when the charge settles.

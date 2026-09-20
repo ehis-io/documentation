@@ -1,7 +1,7 @@
 ---
-title: "KYC Verification Endpoints for Customers"
+title: "Dutchman Bridge Customer KYC Verification Endpoints"
 sidebarTitle: "KYC"
-description: "API reference for all KYC verification endpoints: checking status, uploading documents, and submitting Tier 1, 2, and 3 verification."
+description: "API reference for customer KYC endpoints: check verification status, upload documents, run a selfie check, and submit Tier 1, 2, or 3 verification."
 ---
 
 Dutchman Bridge uses a three-tier KYC model. Tier 1 verifies identity via BVN and NIN; Tier 2 requires a government-issued ID document and a selfie; Tier 3 collects date of birth and residential address for customers who need access to cross-border corridors. The endpoints below cover the full lifecycle: checking where a customer stands, uploading supporting documents, and submitting each tier. All paths are scoped to a `customerId`.
@@ -51,6 +51,32 @@ GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/
   A string identifier indicating the next step the customer should take (e.g., `submit_tier1`, `submit_tier2`, `complete`).
 </ResponseField>
 
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/verification \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "tiers": [
+      { "tier": 1, "status": "approved", "required": false },
+      { "tier": 2, "status": "not_submitted", "required": true },
+      { "tier": 3, "status": "not_submitted", "required": false }
+    ],
+    "nextAction": "submit_tier2"
+  }
+}
+```
+
+</CodeGroup>
+
 ---
 
 ## 2. GET KYC Records
@@ -87,6 +113,37 @@ Returns a paginated list of KYC records. Each record reflects one submission att
   </Expandable>
 </ResponseField>
 
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/kyc \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "id": "kyc_01HXYZ0001TIER1",
+      "tier": 1,
+      "status": "approved",
+      "submittedAt": "2024-06-15T10:00:00.000Z",
+      "reviewedAt": "2024-06-15T10:05:00.000Z"
+    }
+  ],
+  "meta": {
+    "nextCursor": null,
+    "hasMore": false
+  }
+}
+```
+
+</CodeGroup>
+
 ---
 
 ## 3. GET Re-verification Requests
@@ -102,6 +159,33 @@ GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/
 <ParamField path="customerId" type="string" required>
   The unique customer ID.
 </ParamField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/kyc/reverification \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "id": "rev_01HXYZ5678ABCD",
+      "tier": 2,
+      "reason": "ID document was unclear. Please resubmit with a higher-quality image.",
+      "status": "open",
+      "createdAt": "2024-06-18T08:30:00.000Z"
+    }
+  ]
+}
+```
+
+</CodeGroup>
 
 ---
 
@@ -287,6 +371,33 @@ POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}
   The tier that was submitted (`2`).
 </ResponseField>
 
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/kyc/tier2 \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "documentId": "doc_01HXYZ9876QRST",
+    "selfieId": "doc_01HXYZSELFIEXYZ"
+  }'
+```
+
+```json Response (201)
+{
+  "success": true,
+  "data": {
+    "tier": 2,
+    "status": "pending"
+  }
+}
+```
+
+</CodeGroup>
+
 ---
 
 ## 8. POST Tier 3 Submission
@@ -336,3 +447,35 @@ POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}
 <ResponseField name="tier" type="number">
   The tier that was submitted (`3`).
 </ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/kyc/tier3 \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "dateOfBirth": "1990-04-23",
+    "address": {
+      "street": "12 Adeola Odeku Street",
+      "city": "Lagos",
+      "state": "Lagos",
+      "country": "NG"
+    }
+  }'
+```
+
+```json Response (201)
+{
+  "success": true,
+  "data": {
+    "tier": 3,
+    "status": "pending"
+  }
+}
+```
+
+</CodeGroup>

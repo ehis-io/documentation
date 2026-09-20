@@ -1,5 +1,5 @@
 ---
-title: "Set Up Webhooks for Real-Time Event Notifications"
+title: "Configure Dutchman Bridge Webhooks and Verify Events"
 sidebarTitle: "Webhooks"
 description: "Configure your Dutchman Bridge webhook URL to receive real-time events for deposits, withdrawals, KYC updates, and more. Includes signature verification."
 ---
@@ -37,6 +37,28 @@ PUT /api/v1/partner/v1/webhook
 <Warning>
   The signing secret is returned **only once** — at the moment you set your URL. Store it immediately in a secure environment variable or secrets manager. You cannot retrieve it again after this call. If you lose it, use `POST /api/v1/partner/v1/webhook/rotate-secret` to generate a new one.
 </Warning>
+
+**Retrieve your current webhook configuration**
+
+At any time you can fetch your registered URL and confirm whether a signing secret is in place:
+
+```http
+GET /api/v1/partner/v1/webhook
+```
+
+**Example response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "url": "https://your-domain.com/webhook/dutchman",
+    "hasSecret": true
+  }
+}
+```
+
+The `hasSecret` field confirms a secret is configured without exposing its value. If `hasSecret` is `false`, set a new URL (via `PUT`) or rotate the secret (via `POST /rotate-secret`) to generate one.
 
 ## Verifying Webhook Signatures
 

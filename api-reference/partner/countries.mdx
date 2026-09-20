@@ -1,7 +1,7 @@
 ---
-title: "GET /api/v1/partner/v1/countries — Enabled Countries"
+title: "Enabled Countries — Onboarding Markets and Currencies"
 sidebarTitle: "Countries"
-description: "List countries currently enabled for customer onboarding. Use country codes from this response when registering customers."
+description: "List all countries enabled for customer onboarding on your partner account, with local fiat currency and KYC tier requirements per country."
 ---
 
 This endpoint returns all countries that your partner account is currently allowed to onboard customers from. Each entry includes the country code, name, local fiat currency, and a summary of KYC requirements. You should use the `code` values from this response when setting the `country` field during customer registration.
@@ -26,7 +26,7 @@ x-api-key: YOUR_API_KEY
 
 ## Response
 
-The `data` field contains an array of `PartnerCountryDto` objects, one per enabled country.
+The `data` field contains an array of country objects, one per enabled country.
 
 <ResponseField name="code" type="string">
   The ISO 3166-1 alpha-2 country code (e.g., `NG`, `GH`). Use this as the `country` field when registering customers.

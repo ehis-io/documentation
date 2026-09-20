@@ -1,7 +1,7 @@
 ---
-title: "Dutchman Bridge Partner API Reference"
+title: "Dutchman Bridge Partner API — Integration Overview"
 sidebarTitle: "Overview"
-description: "Complete reference for the Dutchman Bridge Partner API. Authenticate with x-api-key, use the base URL, and expect consistent JSON responses."
+description: "Complete reference for the Dutchman Bridge Partner API. Authenticate with x-api-key, send requests to the base URL, and receive consistent JSON responses."
 ---
 
 The Dutchman Bridge Partner API is a REST API served over HTTPS. It lets your business register customers, guide them through KYC, hold stablecoin and fiat balances on their behalf, and move money in and out through deposits, withdrawals, on/off-ramp, and cross-border payouts. All requests must include your partner API key in the `x-api-key` header. There is no OAuth or session token required for Partner API endpoints.
@@ -35,7 +35,7 @@ Keep your API key secret. Do not include it in client-side code or commit it to 
 
 Send JSON request bodies with the `Content-Type: application/json` header. For endpoints that accept file uploads (such as KYC document submissions), use `multipart/form-data` instead.
 
-All endpoints scoped to your partner account are under the `/api/v1/partner/v1/` path prefix. Routes outside this prefix (admin, internal signer, provider webhooks) are internal and require a different authentication mechanism — they are not part of the Partner API.
+All endpoints scoped to your partner account are under the `/api/v1/partner/v1/` path prefix. Routes outside this prefix are internal and are not part of the Partner API.
 
 ## Response Format
 

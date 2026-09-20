@@ -1,18 +1,16 @@
 ---
-title: "Partner Profile and API Key Management"
+title: "Partner Profile — Account Details and Key Rotation"
 sidebarTitle: "Profile"
-description: "Retrieve your partner account profile, rotate your API key, and update company and webhook details via the Partner Management API."
+description: "Retrieve your partner account profile and approval status, and rotate your API key to generate a fresh credential and instantly invalidate the old one."
 ---
 
-The Partner Management endpoints let you inspect and maintain your own partner account — separate from customer management. You can retrieve your profile and current approval status, rotate your API key in the event of a compromise, and update your company information. These endpoints are authenticated with your existing `x-api-key` in the same way as all other Partner API calls.
+The Partner Management endpoints let you inspect and maintain your own partner account — separate from customer management. You can retrieve your profile and current approval status, and rotate your API key in the event of a compromise or as part of regular credential hygiene. These endpoints are authenticated with your existing `x-api-key` in the same way as all other Partner API calls.
 
 ## Endpoints
 
 ```
 GET  https://app.dutchmannetwork.online/api/v1/partner/profile
 POST https://app.dutchmannetwork.online/api/v1/partner/rotate-api-key
-POST https://app.dutchmannetwork.online/api/v1/partner/update-company-details
-POST https://app.dutchmannetwork.online/api/v1/partner/update-webhook
 ```
 
 ## Authentication
@@ -108,20 +106,4 @@ curl --request POST \
 
 </CodeGroup>
 
----
 
-## POST — Update Company Details
-
-Update the company information associated with your partner account (such as company name, address, or contact details). The accepted fields depend on your account's current KYB stage.
-
-No request body is documented here as the accepted fields are determined by your account configuration. Contact Dutchman Bridge support for the full schema applicable to your account.
-
----
-
-## POST — Update Webhook (Legacy)
-
-Update your partner webhook URL. This is the legacy management endpoint for setting a webhook URL.
-
-<Note>
-  Prefer the [`PUT /api/v1/partner/v1/webhook`](/api-reference/webhooks/configuration) endpoint for webhook configuration. It provides additional capabilities including signing secret management, delivery logs, and replay functionality.
-</Note>

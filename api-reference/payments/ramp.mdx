@@ -1,7 +1,7 @@
 ---
-title: "On/Off Ramp Endpoints — Buy and Sell Stablecoin"
+title: "On/Off Ramp — Buy and Sell Stablecoin at Live Rates"
 sidebarTitle: "Ramp"
-description: "Quote and execute fiat-to-stablecoin (buy) and stablecoin-to-fiat (sell) conversions using live exchange rates."
+description: "Get live buy/sell rates, price and execute fiat-to-stablecoin (buy) and stablecoin-to-fiat (sell) conversions at the current all-in exchange rate."
 ---
 
 The ramp endpoints let customers convert between their fiat balance and stablecoins (USDT/USDC) using live, all-in exchange rates. A **buy** converts fiat to stablecoin, debiting the customer's fiat balance and crediting their stablecoin wallet. A **sell** does the reverse — converting stablecoin to fiat. For both directions, always fetch a quote first to show the customer the rate, then call the execute endpoint to lock in and process the conversion.
@@ -106,6 +106,35 @@ Price a fiat-to-stablecoin conversion against the customer's fiat balance. Retur
   The fee charged for this conversion, in fiat.
 </ResponseField>
 
+### Example
+
+<CodeGroup>
+
+```bash cURL — buy/quote
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/buy/quote \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 162000,
+    "currency": "NGN"
+  }'
+```
+
+```json Response — buy/quote (200)
+{
+  "success": true,
+  "data": {
+    "usdtAmount": 99.38,
+    "fiatAmount": 162000,
+    "rate": 1620.00,
+    "fee": 1000
+  }
+}
+```
+
+</CodeGroup>
+
 ---
 
 ## POST — Buy Execute
@@ -140,9 +169,9 @@ Execute a fiat-to-stablecoin conversion. Deducts the fiat amount from the custom
 
 <CodeGroup>
 
-```bash cURL — buy/quote
+```bash cURL — buy/execute
 curl --request POST \
-  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/buy/quote \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/buy/execute \
   --header 'x-api-key: YOUR_API_KEY' \
   --header 'Content-Type: application/json' \
   --data '{
@@ -151,14 +180,13 @@ curl --request POST \
   }'
 ```
 
-```json Response — buy/quote (200)
+```json Response — buy/execute (200)
 {
   "success": true,
   "data": {
-    "usdtAmount": 99.38,
-    "fiatAmount": 162000,
-    "rate": 1620.00,
-    "fee": 1000
+    "usdtCredited": 99.38,
+    "fiatDebited": 162000,
+    "rate": 1620.00
   }
 }
 ```
@@ -170,6 +198,38 @@ curl --request POST \
 ## GET — Sell Networks
 
 Returns the list of blockchain networks the customer can deposit stablecoins on to fund a sell. Use this to show the customer which networks are available when they want to sell stablecoins back to fiat.
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/sell/networks \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "network": "tron",
+      "currency": "USDT",
+      "minimum": "5.00",
+      "maximum": "50000.00"
+    },
+    {
+      "network": "bsc",
+      "currency": "USDC",
+      "minimum": "5.00",
+      "maximum": "50000.00"
+    }
+  ]
+}
+```
+
+</CodeGroup>
 
 ---
 
@@ -196,6 +256,33 @@ Price a stablecoin-to-fiat conversion. Returns the fiat amount the customer will
 <ResponseField name="fee" type="number">
   The fee charged for this conversion, in fiat.
 </ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL — sell/quote
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/sell/quote \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "usdtAmount": 100
+  }'
+```
+
+```json Response — sell/quote (200)
+{
+  "success": true,
+  "data": {
+    "fiatAmount": 159000,
+    "rate": 1590.00,
+    "fee": 1000
+  }
+}
+```
+
+</CodeGroup>
 
 ---
 

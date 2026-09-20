@@ -1,7 +1,7 @@
 ---
-title: "Webhook Configuration — URL and Signing Secret"
+title: "Webhook Setup — Register URL and Rotate Signing Key"
 sidebarTitle: "Configuration"
-description: "Configure your partner webhook endpoint, retrieve the signing secret, and rotate credentials using the Dutchman Bridge API."
+description: "Register or update your partner webhook URL, retrieve your current configuration, rotate the HMAC-SHA256 signing secret, and verify event authenticity."
 ---
 
 Dutchman Bridge sends real-time event notifications to a partner-controlled HTTPS endpoint. You configure the URL for your endpoint using the `PUT` endpoint, and each delivery is signed with an HMAC-SHA256 signature so you can verify its authenticity. The signing secret is returned only once when you first set your URL — store it securely. If you need to rotate the secret, use the rotate-secret endpoint.

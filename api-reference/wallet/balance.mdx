@@ -1,7 +1,7 @@
 ---
-title: "GET /api/v1/partner/v1/customers/{customerId}/balance — Balance"
+title: "Customer Balance — Wallet Polling and Live SSE Stream"
 sidebarTitle: "Balance"
-description: "Retrieve a customer's current USDT and fiat wallet balances. Also covers the real-time Server-Sent Events balance stream."
+description: "Fetch a customer's live USDT and fiat wallet balances on demand, or subscribe to the SSE balance stream for real-time push updates on every change."
 ---
 
 Every customer on Dutchman Bridge holds two balances: a USDT stablecoin balance and a local fiat balance denominated in their country's currency. This page covers both the standard polling endpoint for fetching balances on demand and the Server-Sent Events (SSE) stream endpoint for receiving live updates as balances change.

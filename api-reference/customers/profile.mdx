@@ -1,7 +1,7 @@
 ---
-title: "Customer Profile Endpoints — Get and Update"
+title: "Profile Endpoints: Get, Update, and Delete Customer"
 sidebarTitle: "Profile"
-description: "Retrieve or update a customer's profile fields including name, phone, and address. Also covers password change and withdrawal history."
+description: "Retrieve or update a customer's profile fields including name and phone, change their password, delete their account, or fetch withdrawal history."
 ---
 
 The profile endpoints let you read and modify the mutable parts of a customer's record — name, phone, and other contact details — as well as change their password and delete their account if needed. You can also pull a paginated history of all past withdrawals and payouts for a given customer. All endpoints below are scoped to a specific customer via the `customerId` path parameter.
@@ -29,6 +29,46 @@ GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/
 <ParamField path="customerId" type="string" required>
   The unique customer ID.
 </ParamField>
+
+### Response
+
+All responses follow the `{ success, data }` envelope. On success, `data` contains the customer's profile.
+
+<ResponseField name="id" type="string">
+  Unique customer ID (`customerId`).
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The email address associated with this customer.
+</ResponseField>
+
+<ResponseField name="firstName" type="string">
+  Customer's first name.
+</ResponseField>
+
+<ResponseField name="lastName" type="string">
+  Customer's last name.
+</ResponseField>
+
+<ResponseField name="phone" type="string">
+  Customer's phone number in E.164 format.
+</ResponseField>
+
+<ResponseField name="country" type="string">
+  ISO 3166-1 alpha-2 country code for the customer's country.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Account status. One of `active` or `suspended`.
+</ResponseField>
+
+<ResponseField name="kycStatus" type="string">
+  Overall KYC status reflecting the customer's highest completed verification tier.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the customer account was created.
+</ResponseField>
 
 ### Example
 
@@ -88,6 +128,46 @@ PATCH https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId
 <ParamField body="phone" type="string">
   Updated phone number in E.164 format (e.g., `+2348012345678`).
 </ParamField>
+
+### Response
+
+Returns the full updated customer profile. On success, `data` contains all profile fields reflecting the changes applied.
+
+<ResponseField name="id" type="string">
+  Unique customer ID (`customerId`).
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The email address associated with this customer.
+</ResponseField>
+
+<ResponseField name="firstName" type="string">
+  Updated first name (or unchanged if not included in the request).
+</ResponseField>
+
+<ResponseField name="lastName" type="string">
+  Updated last name (or unchanged if not included in the request).
+</ResponseField>
+
+<ResponseField name="phone" type="string">
+  Updated phone number in E.164 format (or unchanged if not included in the request).
+</ResponseField>
+
+<ResponseField name="country" type="string">
+  ISO 3166-1 alpha-2 country code for the customer's country.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Account status. One of `active` or `suspended`.
+</ResponseField>
+
+<ResponseField name="kycStatus" type="string">
+  Overall KYC status reflecting the customer's highest completed verification tier.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the customer account was created.
+</ResponseField>
 
 ### Example
 
@@ -149,6 +229,12 @@ PATCH https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId
   The new password to set for the customer's account.
 </ParamField>
 
+### Response
+
+<ResponseField name="message" type="string">
+  Confirmation message indicating the password was changed successfully.
+</ResponseField>
+
 ### Example
 
 <CodeGroup>
@@ -191,6 +277,14 @@ DELETE https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerI
   The unique customer ID of the account to delete.
 </ParamField>
 
+### Example
+
+```bash cURL
+curl --request DELETE \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
 <Warning>
   Account deletion is **permanent and cannot be undone**. All customer data, balances, and transaction history will be irretrievably removed. Ensure any remaining balance is withdrawn before calling this endpoint.
 </Warning>
@@ -210,6 +304,45 @@ GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/
 <ParamField path="customerId" type="string" required>
   The unique customer ID.
 </ParamField>
+
+### Response
+
+Returns a paginated list of withdrawal records under `data`. Each item in the array represents one outbound movement.
+
+<ResponseField name="id" type="string">
+  Unique identifier for the withdrawal record.
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  The withdrawal amount as a decimal string.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The fiat currency code for this withdrawal (e.g., `NGN`).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the withdrawal — e.g., `pending`, `completed`, or `failed`.
+</ResponseField>
+
+<ResponseField name="bankAccount" type="object">
+  The destination bank account details for this withdrawal.
+  <Expandable title="bankAccount fields">
+    <ResponseField name="bankName" type="string">
+      Name of the destination bank.
+    </ResponseField>
+    <ResponseField name="accountNumber" type="string">
+      Destination account number.
+    </ResponseField>
+    <ResponseField name="accountName" type="string">
+      Account holder name at the destination bank.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the withdrawal was initiated.
+</ResponseField>
 
 ### Example
 

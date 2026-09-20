@@ -1,5 +1,5 @@
 ---
-title: "Customers and KYC Verification Tiers Explained"
+title: "Managing Customers and KYC Tiers in Dutchman Bridge"
 sidebarTitle: "Customers & KYC"
 description: "Learn how Dutchman Bridge customers are registered and verified through three KYC tiers, and how tier status unlocks financial features."
 ---
@@ -39,6 +39,70 @@ POST /api/v1/partner/v1/customers
 <Note>
 The `id` returned in this response is your `customerId`. It is the single key identifier in every Partner API route that operates on a specific customer — `/api/v1/partner/v1/customers/{customerId}/...`.
 </Note>
+
+## Reading Customer Records
+
+Once a customer is registered, three endpoints give you different levels of detail about their record:
+
+**Get a customer** — returns the core customer object (id, name, email, status, KYC state):
+
+```
+GET /api/v1/partner/v1/customers/{customerId}
+```
+
+**Full customer snapshot** — returns the customer's profile, KYC summary, and wallet state in a single call. Useful for loading a customer dashboard without making multiple requests:
+
+```
+GET /api/v1/partner/v1/customers/{customerId}/full
+```
+
+**Example response shape:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "cus_01j9xk2m3n4p5q6r7s8t9u0v",
+    "email": "ada.okonkwo@example.com",
+    "firstName": "Ada",
+    "lastName": "Okonkwo",
+    "status": "active",
+    "kyc": {
+      "tiers": [
+        { "tier": 1, "status": "approved" },
+        { "tier": 2, "status": "not_started" },
+        { "tier": 3, "status": "not_started" }
+      ]
+    },
+    "wallet": {
+      "usdt": "100.00",
+      "fiat": { "currency": "NGN", "amount": "85000.00" }
+    }
+  }
+}
+```
+
+## Updating a Customer's Profile
+
+Read or update the mutable fields on a customer's profile — such as their phone number or address — using the profile endpoints:
+
+**Read profile:**
+```
+GET /api/v1/partner/v1/customers/{customerId}/profile
+```
+
+**Update profile:**
+```
+PATCH /api/v1/partner/v1/customers/{customerId}/profile
+```
+
+**Example PATCH request body:**
+```json
+{
+  "phone": "+2348099876543"
+}
+```
+
+Only the fields you include in the PATCH body are updated — omitted fields are left unchanged. A successful update returns the full updated profile object.
 
 ## KYC Tiers
 

@@ -1,7 +1,7 @@
 ---
-title: "GET /api/v1/partner/v1/customers/{customerId}/full — Full Snapshot"
+title: "Full Customer Snapshot — Dutchman Bridge Partner API"
 sidebarTitle: "Full Snapshot"
-description: "Retrieve a customer's complete snapshot in one call — profile, KYC status, and wallet balances combined."
+description: "Retrieve a customer's complete snapshot in a single call — profile, KYC tier statuses, and wallet balances combined into one response."
 ---
 
 Rather than making three separate requests for profile, KYC status, and wallet balances, this endpoint returns all of that data in a single response. It is the most efficient way to hydrate a customer view that needs to show the customer's identity state and available funds at the same time.

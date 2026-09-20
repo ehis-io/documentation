@@ -1,7 +1,7 @@
 ---
-title: "POST /api/v1/partner/v1/customers — Register Customer"
+title: "Customer Registration — Dutchman Bridge Partner API"
 sidebarTitle: "Register Customer"
-description: "Register a new customer under your partner account. Returns a customerId used in all subsequent calls for this customer."
+description: "Register a new end-customer under your partner account. Returns a customerId that you pass to every subsequent customer-scoped API call."
 ---
 
 Before any customer can hold a balance or transact on Dutchman Bridge, they must be registered under your partner account. This endpoint creates the customer record and returns a `customerId` — a stable identifier you store on your side and pass to every subsequent customer-scoped call. Email addresses are scoped to your partner account, so the same email can exist under different partners.

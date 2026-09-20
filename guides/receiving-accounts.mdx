@@ -1,5 +1,5 @@
 ---
-title: "Open Foreign-Currency Receiving Accounts"
+title: "Open and Manage Foreign-Currency Receiving Accounts"
 sidebarTitle: "Receiving Accounts"
 description: "Give customers dedicated foreign-currency accounts to receive international payments. Open accounts in supported currencies and track incoming transfers."
 ---
@@ -37,7 +37,7 @@ POST /api/v1/partner/v1/customers/{customerId}/receiving-accounts/{currency}
 
 ```bash
 curl -X POST \
-  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/receiving-accounts/GBP \
+  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/receiving-accounts/GBP \
   -H "x-api-key: YOUR_API_KEY"
 ```
 
@@ -114,7 +114,7 @@ For example, to refresh a customer's GBP account:
 
 ```bash
 curl -X POST \
-  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/receiving-accounts/GBP/refresh \
+  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/receiving-accounts/GBP/refresh \
   -H "x-api-key: YOUR_API_KEY"
 ```
 

@@ -1,7 +1,7 @@
 ---
-title: "GET /api/v1/partner/v1/customers/{customerId}/transactions — Transactions"
+title: "Customer Transaction Ledger — Cursor-Paginated List"
 sidebarTitle: "Transactions"
-description: "Retrieve a cursor-paginated list of ledger entries (deposits, withdrawals, swaps, sends) for a customer, newest first."
+description: "Retrieve a cursor-paginated ledger of all customer activity — deposits, withdrawals, swaps, on-chain sends, and sells — sorted newest first."
 ---
 
 This endpoint returns a customer's full transaction ledger — every credit and debit across deposits, withdrawals, on-ramp swaps, off-ramp sells, and on-chain sends. The list is sorted newest first and uses cursor-based pagination so you can efficiently page through large histories without missing entries caused by new transactions arriving between requests.

@@ -1,7 +1,7 @@
 ---
-title: "GET /api/v1/partner/v1/features — Feature Flags"
+title: "Feature Flags — Partner Capabilities and Availability"
 sidebarTitle: "Features"
-description: "Query all switchable capabilities and their current state for your partner account — use this to conditionally show features in your product."
+description: "Retrieve the full list of platform capabilities and their current activation state for your partner account to gate features in your product UI."
 ---
 
 The features endpoint returns the complete list of switchable capabilities available on the Dutchman Bridge platform and the current activation state of each one for your partner account. Capabilities can be in one of three states: fully live, coming soon, or turned off. By checking this endpoint at startup or on demand, you can conditionally render or disable UI controls without shipping a code change whenever feature availability changes.

@@ -1,5 +1,5 @@
 ---
-title: "Onboard a Customer with KYC Verification"
+title: "Register a Customer and Submit KYC Tiers 1, 2, and 3"
 sidebarTitle: "Onboard Customer"
 description: "Step-by-step guide to registering a new customer in Dutchman Bridge and completing all three KYC tiers to unlock full financial services."
 ---
@@ -219,7 +219,7 @@ Before a customer can hold balances, make deposits, or send funds through Dutchm
     </Note>
 
     <Warning>
-      If a tier is rejected, check the `rejectionReason` field in the KYC record and resubmit with corrected data. If re-verification has been requested by an admin, retrieve the outstanding request details from `GET /api/v1/partner/v1/customers/{customerId}/kyc/reverification` and act on each item accordingly.
+      If a tier is rejected, check the `rejectionReason` field in the KYC record and resubmit with corrected data. If your customer has outstanding re-verification items, retrieve them from `GET /api/v1/partner/v1/customers/{customerId}/kyc/reverification` and resolve each one before resubmitting.
     </Warning>
   </Step>
 
