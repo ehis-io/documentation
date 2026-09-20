@@ -1,0 +1,175 @@
+---
+title: "Withdraw Funds to a Customer's Bank Account"
+sidebarTitle: "Withdrawals"
+description: "Pay out customer balances to their linked bank accounts using pre-flight quotes. Learn how to add bank accounts, get quotes, and execute withdrawals."
+---
+
+Customers can withdraw their local fiat balance to any bank account they have linked to their profile. The recommended flow is to fetch the available banks for the customer's country, verify the destination account number, link the account, get a quote to preview fees, and then execute the withdrawal. Always retrieve a quote before executing — it shows the exact fee and net amount the customer will receive so there are no surprises.
+
+## Step 1: List Available Banks
+
+Fetch the list of supported banks for the customer's country. Pass the `country` query parameter to filter results.
+
+```bash
+curl "https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/banks?country=NG" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": [
+    { "bankCode": "058", "bankName": "GTBank" },
+    { "bankCode": "011", "bankName": "First Bank" },
+    { "bankCode": "033", "bankName": "UBA" }
+  ]
+}
+```
+
+Present this list in your UI so the customer can select their bank before entering an account number.
+
+## Step 2: Verify Bank Account
+
+Before linking a bank account, verify the account number to confirm it is valid and retrieve the account holder name. Show the resolved name to the customer for confirmation — this prevents transfers to the wrong account.
+
+```bash
+curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/bank/verify-account \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountNumber": "0123456789",
+    "bankCode": "058"
+  }'
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "accountName": "Ada Obi",
+    "accountNumber": "0123456789"
+  }
+}
+```
+
+If the resolved `accountName` does not match the customer's expectation, do not proceed with linking.
+
+## Step 3: Link the Bank Account
+
+Once the customer confirms the account name, add the bank account to their profile.
+
+```bash
+curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/accounts \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountNumber": "0123456789",
+    "bankCode": "058",
+    "bankName": "GTBank"
+  }'
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "accountId": "acct_xyz789",
+    "accountNumber": "0123456789",
+    "bankName": "GTBank",
+    "accountName": "Ada Obi",
+    "isDefault": true
+  }
+}
+```
+
+**Manage linked accounts**
+
+| Action | Method | Endpoint |
+|---|---|---|
+| List all linked accounts | `GET` | `/api/v1/partner/v1/customers/{customerId}/accounts` |
+| Set an account as default | `PATCH` | `/api/v1/partner/v1/customers/{customerId}/accounts/{accountId}/default` |
+| Remove an account | `DELETE` | `/api/v1/partner/v1/customers/{customerId}/accounts/{accountId}` |
+
+**Set a default account**
+
+```bash
+curl -X PATCH https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/accounts/acct_xyz789/default \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+## Step 4: Get a Withdrawal Quote
+
+Before executing a withdrawal, fetch a quote for the exact amount and currency. The quote shows the platform fee and the net amount the customer will receive.
+
+```bash
+curl "https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/withdraw/quote?amount=10000&currency=NGN" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "amount": "10000",
+    "fee": "100",
+    "netAmount": "9900",
+    "currency": "NGN"
+  }
+}
+```
+
+Display the `fee` and `netAmount` to the customer so they can confirm before the withdrawal is executed.
+
+## Step 5: Execute the Withdrawal
+
+Once the customer approves the quoted amounts, submit the withdrawal. The request uses the customer's default linked bank account automatically.
+
+```bash
+curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/withdraw \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 10000,
+    "currency": "NGN"
+  }'
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "withdrawalId": "wdl_abc",
+    "status": "pending",
+    "amount": "10000",
+    "fee": "100",
+    "netAmount": "9900",
+    "currency": "NGN"
+  }
+}
+```
+
+**Withdrawal status lifecycle**
+
+| Status | Meaning |
+|---|---|
+| `pending` | Submitted and queued for processing |
+| `processing` | Bank transfer is in flight |
+| `completed` | Funds successfully delivered to the bank account |
+| `failed` | Transfer failed; the balance has been refunded |
+| `reversed` | Completed transfer was reversed after the fact |
+
+Listen for webhook events to receive real-time status updates without polling. See the [Webhooks guide](/guides/webhooks) for setup instructions.
+
+<Warning>
+  Withdrawals are sent to the customer's **default** linked bank account. Always ensure the correct account is set as default — using the `PATCH /accounts/{accountId}/default` endpoint — before executing a withdrawal.
+</Warning>

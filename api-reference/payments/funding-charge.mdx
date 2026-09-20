@@ -1,0 +1,203 @@
+---
+title: "Funding Charge Endpoints — Initiate and List"
+sidebarTitle: "Funding Charge"
+description: "Start a one-off fiat funding charge via bank transfer or EFT (ZAR), and list a customer's funding charge history."
+---
+
+Funding charges let you top up a customer's fiat balance using a one-off bank-initiated payment. Two collection methods are supported: `bank_transfer`, which returns static bank account details the customer uses to push a payment, and `eft`, which returns a redirect URL for the customer to authorise the debit directly (ZAR only). After initiating, poll or listen for a webhook to confirm when the charge settles.
+
+## Endpoints
+
+```
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/funding/charge
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/funding/charges
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## POST — Initiate a Funding Charge
+
+Start a one-off funding charge. The response shape depends on the `method` you choose: `bank_transfer` returns static bank account details for a push payment, while `eft` returns a redirect URL for the customer to authorise a debit.
+
+### Request Body
+
+<ParamField body="amount" type="number" required>
+  The amount to charge in the specified fiat currency.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  The fiat currency code (e.g., `NGN`, `ZAR`). EFT is only available for `ZAR`.
+</ParamField>
+
+<ParamField body="method" type="string" required>
+  The collection method. One of `bank_transfer` or `eft`. EFT is restricted to ZAR customers.
+</ParamField>
+
+### Response Fields
+
+The fields returned vary by `method`:
+
+**For `bank_transfer`:**
+
+<ResponseField name="accountNumber" type="string">
+  The virtual account number the customer should transfer funds to.
+</ResponseField>
+
+<ResponseField name="bankName" type="string">
+  The name of the receiving bank.
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  A unique payment reference the customer must include in their transfer to match the payment.
+</ResponseField>
+
+**For `eft`:**
+
+<ResponseField name="redirectUrl" type="string">
+  A URL to redirect the customer to, where they authorise the EFT debit.
+</ResponseField>
+
+### Examples
+
+<Tabs>
+  <Tab title="bank_transfer">
+
+```bash cURL — bank_transfer
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/funding/charge \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 100000,
+    "currency": "NGN",
+    "method": "bank_transfer"
+  }'
+```
+
+```json Response (200) — bank_transfer
+{
+  "success": true,
+  "data": {
+    "accountNumber": "0123456789",
+    "bankName": "Wema Bank",
+    "reference": "DBR-7X9Q2K"
+  }
+}
+```
+
+  </Tab>
+  <Tab title="eft">
+
+```bash cURL — eft
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/funding/charge \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 5000,
+    "currency": "ZAR",
+    "method": "eft"
+  }'
+```
+
+```json Response (200) — eft
+{
+  "success": true,
+  "data": {
+    "redirectUrl": "https://pay.peachpayments.com/authorize?token=eyJhbGci..."
+  }
+}
+```
+
+  </Tab>
+</Tabs>
+
+---
+
+## GET — List Funding Charges
+
+Retrieve the customer's funding charge history, newest first. Results are cursor-paginated — use `meta.nextCursor` and `meta.hasMore` to page through records.
+
+### Query Parameters
+
+<ParamField query="cursor" type="string">
+  Pagination cursor returned by the previous response's `meta.nextCursor`. Omit to start from the most recent charge.
+</ParamField>
+
+<ParamField query="limit" type="number">
+  Number of records to return per page. Defaults to 20.
+</ParamField>
+
+### Response Fields (per charge)
+
+<ResponseField name="id" type="string">
+  Unique identifier for the funding charge.
+</ResponseField>
+
+<ResponseField name="amount" type="number">
+  The charge amount in the specified currency.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The fiat currency code of the charge.
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  The collection method used: `bank_transfer` or `eft`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the charge. One of `pending`, `completed`, or `failed`.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the charge was initiated.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url 'https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/funding/charges?limit=5' \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "id": "fch_01HABC001",
+      "amount": 100000,
+      "currency": "NGN",
+      "method": "bank_transfer",
+      "status": "completed",
+      "createdAt": "2024-07-10T14:30:00.000Z"
+    },
+    {
+      "id": "fch_01HABC002",
+      "amount": 5000,
+      "currency": "ZAR",
+      "method": "eft",
+      "status": "pending",
+      "createdAt": "2024-07-11T09:15:00.000Z"
+    }
+  ],
+  "meta": {
+    "nextCursor": "eyJpZCI6ImZjaF8wMUhBQkMwMDIifQ==",
+    "hasMore": false
+  }
+}
+```
+
+</CodeGroup>

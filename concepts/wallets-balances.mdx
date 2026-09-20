@@ -1,0 +1,108 @@
+---
+title: "Customer Wallets and Balances in Dutchman Bridge"
+sidebarTitle: "Wallets & Balances"
+description: "Each Dutchman Bridge customer has a dual wallet holding USDT stablecoin and a local fiat balance. Learn how balances work and how to retrieve them."
+---
+
+Every Dutchman Bridge customer automatically has a dual wallet: a USDT stablecoin balance and a local-currency fiat balance. Both sides of the wallet are managed through the Partner API — you retrieve balances, surface deposit addresses, and present the virtual bank account number, all on behalf of your customer. This page explains the wallet structure, how customers fund each side, and how to keep balances in sync in your application.
+
+## Balance Object
+
+Retrieve a customer's current balances with a single call:
+
+```
+GET /api/v1/partner/v1/customers/{customerId}/balance
+```
+
+**Example response:**
+```json
+{
+  "success": true,
+  "data": {
+    "usdt": "100.00",
+    "fiat": {
+      "currency": "NGN",
+      "amount": "85000.00"
+    }
+  }
+}
+```
+
+Both `usdt` and `fiat.amount` are returned as decimal strings to preserve precision. Always treat them as fixed-point numbers in your application — avoid floating-point arithmetic on monetary values.
+
+## Real-Time Balance Streaming
+
+For applications that need to reflect balance changes immediately — such as a wallet dashboard or a payment confirmation screen — Dutchman Bridge provides a Server-Sent Events (SSE) stream that re-emits the full balance object on every credit or debit:
+
+```
+GET /api/v1/partner/v1/customers/{customerId}/balance/stream
+```
+
+Connect to this endpoint with an `EventSource` (browser) or an HTTP SSE client (server-side). Each event contains the same balance object as the REST endpoint. Close the connection when the user navigates away to avoid unnecessary server load.
+
+## Deposit Addresses
+
+Customers fund their USDT balance by sending stablecoins on-chain to a per-network deposit address. Each customer has a unique address on every supported blockchain network:
+
+```
+GET /api/v1/partner/v1/customers/{customerId}/addresses
+```
+
+**Example response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "network": "TRC-20",
+      "address": "TQnPqM1234abcXYZ5678defGHI"
+    },
+    {
+      "network": "ERC-20",
+      "address": "0xAb12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St90"
+    },
+    {
+      "network": "BEP-20",
+      "address": "bnb1qy23zx9kvxm8abc456def789ghi012jkl345mn"
+    }
+  ]
+}
+```
+
+Display the address for the customer's preferred network alongside a QR code. Deposits are detected automatically and credited to the USDT balance — no polling required if you are subscribed to webhooks or using the balance stream.
+
+## Virtual Bank Account
+
+For fiat funding, each customer is provisioned with a virtual bank account in their local currency. The customer makes a standard bank transfer to this account number, and the fiat balance is credited automatically by the payment provider.
+
+```
+GET /api/v1/partner/v1/customers/{customerId}/virtual-account
+```
+
+The response includes the bank name, account number, and account name the customer should use as the transfer beneficiary. Surface this information in your app's "Add money" or "Fund account" flow alongside the exact amount to transfer.
+
+## How Balances Change
+
+<CardGroup cols={2}>
+  <Card title="Credits (Balance Increases)" icon="arrow-down-left">
+    - **Crypto deposit** — USDT received on-chain to a deposit address
+    - **Fiat deposit** — Local bank transfer received on the virtual account
+    - **Sell stablecoin** — Customer sells USDT; fiat balance is credited
+  </Card>
+  <Card title="Debits (Balance Decreases)" icon="arrow-up-right">
+    - **Withdrawal** — Fiat paid out to a linked bank account
+    - **Buy stablecoin** — Customer buys USDT; fiat balance is debited
+    - **On-chain send** — USDT sent to an external blockchain address
+    - **Cross-border payout** — USDT converted and paid to a recipient abroad
+  </Card>
+</CardGroup>
+
+<Tip>
+Use the transaction history endpoint to reconcile all balance movements and provide your customers with a complete ledger. It returns every credit and debit as a structured record, cursor-paginated from newest to oldest:
+
+```
+GET /api/v1/partner/v1/customers/{customerId}/transactions
+```
+
+See [Transaction History and Ledger Entries](/concepts/transactions) for full details on the response structure and pagination.
+</Tip>

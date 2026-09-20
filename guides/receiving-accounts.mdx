@@ -1,0 +1,123 @@
+---
+title: "Open Foreign-Currency Receiving Accounts"
+sidebarTitle: "Receiving Accounts"
+description: "Give customers dedicated foreign-currency accounts to receive international payments. Open accounts in supported currencies and track incoming transfers."
+---
+
+Dutchman Bridge lets your customers hold dedicated foreign-currency accounts — for example a GBP or USD account — to receive international payments from abroad. Each account has its own account number and bank details that the customer can share with senders. Funds received are credited to the customer's wallet automatically, per your partner configuration.
+
+## Supported Currencies
+
+Before opening an account, check which foreign currencies are available to the customer.
+
+```http
+GET /api/v1/partner/v1/customers/{customerId}/receiving-accounts/currencies
+```
+
+**Example response**
+
+```json
+{
+  "success": true,
+  "data": ["GBP", "USD", "EUR"]
+}
+```
+
+Use this list to populate a currency selector in your UI so customers only see options they can actually open.
+
+## Opening an Account
+
+Open a foreign-currency receiving account for a customer by specifying the currency in the path. If the customer already has an account in that currency, the existing account details are returned — making this endpoint safe to call multiple times.
+
+```http
+POST /api/v1/partner/v1/customers/{customerId}/receiving-accounts/{currency}
+```
+
+**Example — open a GBP account**
+
+```bash
+curl -X POST \
+  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/receiving-accounts/GBP \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+**Example response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "currency": "GBP",
+    "accountNumber": "12345678",
+    "sortCode": "04-00-75",
+    "bankName": "Example Bank",
+    "accountName": "Jane Doe"
+  }
+}
+```
+
+Present the returned `accountNumber`, `sortCode`, and `bankName` to the customer so they can share these details with anyone sending them a payment.
+
+## Listing Accounts
+
+Retrieve all foreign-currency receiving accounts the customer has opened, across all currencies.
+
+```http
+GET /api/v1/partner/v1/customers/{customerId}/receiving-accounts
+```
+
+**Example response**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "currency": "GBP",
+      "accountNumber": "12345678",
+      "sortCode": "04-00-75",
+      "bankName": "Example Bank",
+      "accountName": "Jane Doe"
+    },
+    {
+      "currency": "USD",
+      "accountNumber": "87654321",
+      "routingNumber": "026009593",
+      "bankName": "Example Bank US",
+      "accountName": "Jane Doe"
+    }
+  ]
+}
+```
+
+## Tracking Incoming Payments
+
+### View payment activity
+
+Poll this endpoint to see transfers that have arrived or are still in transit on any of the customer's receiving accounts.
+
+```http
+GET /api/v1/partner/v1/customers/{customerId}/receiving-accounts/activity
+```
+
+The response includes both settled payments and in-flight transfers, allowing you to show the customer a real-time view of expected credits.
+
+### Refresh account data
+
+If a payment is expected but not yet showing, trigger a manual re-read from the underlying provider to pull the latest credits.
+
+```http
+POST /api/v1/partner/v1/customers/{customerId}/receiving-accounts/{currency}/refresh
+```
+
+For example, to refresh a customer's GBP account:
+
+```bash
+curl -X POST \
+  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/receiving-accounts/GBP/refresh \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+<Note>
+  Received foreign-currency funds are automatically converted and credited to the customer's wallet balance according to your partner configuration. The customer does not need to take any action to trigger the conversion.
+</Note>

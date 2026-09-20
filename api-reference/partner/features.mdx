@@ -1,0 +1,87 @@
+---
+title: "GET /api/v1/partner/v1/features — Feature Flags"
+sidebarTitle: "Features"
+description: "Query all switchable capabilities and their current state for your partner account — use this to conditionally show features in your product."
+---
+
+The features endpoint returns the complete list of switchable capabilities available on the Dutchman Bridge platform and the current activation state of each one for your partner account. Capabilities can be in one of three states: fully live, coming soon, or turned off. By checking this endpoint at startup or on demand, you can conditionally render or disable UI controls without shipping a code change whenever feature availability changes.
+
+<Tip>
+  Gate features in your UI based on the `status` field. If a feature is `COMING_SOON` or `OFF`, disable the corresponding UI controls and optionally surface messaging to your customers. This prevents users from attempting transactions that will fail.
+</Tip>
+
+## Endpoint
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/features
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+## Response
+
+The `data` field contains an array of feature flag objects.
+
+<ResponseField name="key" type="string">
+  The machine-readable feature identifier. Use this key to look up a specific feature in your application logic.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The current activation state of the feature. One of:
+
+  | Value | Description |
+  |---|---|
+  | `LIVE` | The feature is fully enabled and available for customers to use. |
+  | `COMING_SOON` | The feature is not yet available but is expected to launch. Show a preview or disable controls. |
+  | `OFF` | The feature is disabled for your partner account. Do not show the feature in your UI. |
+</ResponseField>
+
+<ResponseField name="label" type="string">
+  A human-readable display name for the feature, suitable for use in admin interfaces or logs.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/features \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "key": "cross_border_payouts",
+      "status": "LIVE",
+      "label": "Cross-Border Payouts"
+    },
+    {
+      "key": "receiving_accounts",
+      "status": "LIVE",
+      "label": "Foreign-Currency Receiving Accounts"
+    },
+    {
+      "key": "ramp",
+      "status": "LIVE",
+      "label": "On/Off Ramp"
+    },
+    {
+      "key": "on_chain_send",
+      "status": "COMING_SOON",
+      "label": "On-Chain Send"
+    }
+  ]
+}
+```
+
+</CodeGroup>

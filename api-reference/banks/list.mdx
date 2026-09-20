@@ -1,0 +1,81 @@
+---
+title: "GET /api/v1/partner/v1/customers/{customerId}/banks"
+sidebarTitle: "List Banks"
+description: "Retrieve a list of supported banks for the customer's country or a specified country, including bank codes for account verification and linking."
+---
+
+This endpoint returns the list of supported banks for a given country, including each bank's name and unique bank code. You'll need these bank codes when calling the verify-account and add-account endpoints to look up and link a customer's payout bank account. By default, the response reflects the customer's registered country, but you can override this with the `country` query parameter.
+
+<Tip>
+  Use the `bankCode` values from this response when calling the [verify-account](/api-reference/banks/linked-accounts) and [add-account](/api-reference/banks/linked-accounts) endpoints. Passing an unrecognised bank code to those endpoints will result in a validation error.
+</Tip>
+
+## Endpoint
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/banks
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+## Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique identifier of the customer whose supported banks you want to retrieve.
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="country" type="string">
+  ISO 3166-1 alpha-2 country code (e.g., `NG`, `ZA`, `GH`). When omitted, defaults to the customer's registered country. Use this to fetch banks for a different country than the customer's default.
+</ParamField>
+
+## Response
+
+The `data` field contains an array of bank objects, one entry per supported bank.
+
+<ResponseField name="bankCode" type="string">
+  The unique code identifying the bank. Pass this value to the verify-account and add-account endpoints.
+</ResponseField>
+
+<ResponseField name="bankName" type="string">
+  The full display name of the bank.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url 'https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/banks?country=NG' \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "bankCode": "044",
+      "bankName": "Access Bank"
+    },
+    {
+      "bankCode": "011",
+      "bankName": "First Bank of Nigeria"
+    },
+    {
+      "bankCode": "058",
+      "bankName": "Guaranty Trust Bank"
+    }
+  ]
+}
+```
+
+</CodeGroup>

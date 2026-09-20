@@ -1,0 +1,165 @@
+---
+title: "Webhook Configuration — URL and Signing Secret"
+sidebarTitle: "Configuration"
+description: "Configure your partner webhook endpoint, retrieve the signing secret, and rotate credentials using the Dutchman Bridge API."
+---
+
+Dutchman Bridge sends real-time event notifications to a partner-controlled HTTPS endpoint. You configure the URL for your endpoint using the `PUT` endpoint, and each delivery is signed with an HMAC-SHA256 signature so you can verify its authenticity. The signing secret is returned only once when you first set your URL — store it securely. If you need to rotate the secret, use the rotate-secret endpoint.
+
+## Endpoints
+
+```
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/webhook
+PUT  https://app.dutchmannetwork.online/api/v1/partner/v1/webhook
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/webhook/rotate-secret
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## GET — Get Webhook Config
+
+Returns your current webhook configuration, including the registered URL and whether a signing secret has been set.
+
+### Response Fields
+
+<ResponseField name="url" type="string">
+  The HTTPS URL currently registered as your webhook endpoint. `null` if no URL has been configured yet.
+</ResponseField>
+
+<ResponseField name="secretIsSet" type="boolean">
+  `true` if a signing secret has been generated and is active for this webhook URL.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/webhook \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "url": "https://hooks.yourapp.com/dutchman",
+    "secretIsSet": true
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## PUT — Set Webhook URL
+
+Register or update the HTTPS endpoint that Dutchman Bridge will deliver event notifications to. This call generates a new signing secret and returns it in the response.
+
+<Warning>
+  The signing `secret` is returned **only once** in this response. Copy it and store it securely in your application's environment configuration immediately. You will not be able to retrieve the secret again — if you lose it, you must rotate it using the rotate-secret endpoint.
+</Warning>
+
+### Request Body
+
+<ParamField body="url" type="string" required>
+  The fully-qualified HTTPS URL of your webhook endpoint (e.g., `https://hooks.yourapp.com/dutchman`). HTTP endpoints are not accepted.
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="url" type="string">
+  The webhook URL that was registered.
+</ResponseField>
+
+<ResponseField name="secret" type="string">
+  The HMAC-SHA256 signing secret. Use this to verify the `X-Webhook-Signature` header on incoming deliveries. Shown only once.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request PUT \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/webhook \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "url": "https://hooks.yourapp.com/dutchman"
+  }'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "url": "https://hooks.yourapp.com/dutchman",
+    "secret": "whsec_4f3a9b2c1d8e7f6a0b5c..."
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Rotate Signing Secret
+
+Generates a new signing secret and invalidates the previous one. The new secret is returned in the response and shown only once.
+
+<Warning>
+  Update your application to use the new secret **before** rotating. Once this endpoint is called, the old secret is immediately invalidated and any deliveries signed with it will fail your signature verification until you update to the new value.
+</Warning>
+
+### Response Fields
+
+<ResponseField name="secret" type="string">
+  The new HMAC-SHA256 signing secret. Store this immediately — it will not be shown again.
+</ResponseField>
+
+---
+
+## Verifying Webhook Signatures
+
+Every delivery from Dutchman Bridge includes an `X-Webhook-Signature` header. The value is an HMAC-SHA256 hex digest of the raw request body, keyed with your signing secret. Verify this on every incoming request to ensure the delivery is authentic and has not been tampered with.
+
+```javascript Node.js signature verification
+const crypto = require('crypto');
+
+function verifyWebhookSignature(rawBody, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+
+// In your Express handler:
+app.post('/dutchman', express.raw({ type: 'application/json' }), (req, res) => {
+  const sig = req.headers['x-webhook-signature'];
+  if (!verifyWebhookSignature(req.body, sig, process.env.WEBHOOK_SECRET)) {
+    return res.status(401).send('Invalid signature');
+  }
+  const event = JSON.parse(req.body);
+  // process event...
+  res.sendStatus(200);
+});
+```
+
+<Note>
+  Always use a **timing-safe comparison** (such as `crypto.timingSafeEqual` in Node.js) when comparing the expected and received signatures. Simple string equality comparisons are vulnerable to timing attacks.
+</Note>

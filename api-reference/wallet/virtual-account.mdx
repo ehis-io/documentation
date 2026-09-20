@@ -1,0 +1,80 @@
+---
+title: "GET /api/v1/partner/v1/customers/{customerId}/virtual-account — Virtual Account"
+sidebarTitle: "Virtual Account"
+description: "Retrieve the customer's local-currency virtual bank account for fiat deposits. Customers transfer to this account to fund their fiat balance."
+---
+
+Every customer on Dutchman Bridge is provisioned a dedicated virtual bank account in their local currency. When a customer makes a bank transfer to this account, the funds are automatically credited to their fiat wallet balance. This endpoint returns the full bank account details you need to display in your app so the customer can initiate the transfer.
+
+## Endpoint
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/virtual-account
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+## Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+## Response
+
+All responses follow the `{ success, data }` envelope. On success, `data` contains the virtual bank account details.
+
+<ResponseField name="accountNumber" type="string">
+  The virtual account number the customer should transfer funds to.
+</ResponseField>
+
+<ResponseField name="bankName" type="string">
+  The name of the bank that issued the virtual account (e.g., `Providus Bank`).
+</ResponseField>
+
+<ResponseField name="accountName" type="string">
+  The account name registered to this virtual account, typically the customer's legal name.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The ISO 4217 currency code for this account (e.g., `NGN`).
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  A unique reference string to include with the transfer. Including this reference ensures the deposit is matched to the correct customer account.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/virtual-account \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "accountNumber": "9012345678",
+    "bankName": "Providus Bank",
+    "accountName": "Amaka Obi",
+    "currency": "NGN",
+    "reference": "DBR-cust_01HXYZ1234ABCDEF"
+  }
+}
+```
+
+</CodeGroup>
+
+<Tip>
+  Display the full bank account details — account number, bank name, account name, and reference — clearly in your app so customers can easily set up a transfer from their bank's mobile or web app. Consider providing a copy-to-clipboard button for each field to reduce transcription errors.
+</Tip>

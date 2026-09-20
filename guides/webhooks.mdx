@@ -1,0 +1,158 @@
+---
+title: "Set Up Webhooks for Real-Time Event Notifications"
+sidebarTitle: "Webhooks"
+description: "Configure your Dutchman Bridge webhook URL to receive real-time events for deposits, withdrawals, KYC updates, and more. Includes signature verification."
+---
+
+Dutchman Bridge sends webhook events to your configured URL whenever important state changes occur — KYC approvals, deposits credited, withdrawals completed, and more. Configure your endpoint once and get notified in real time, without needing to poll the API.
+
+## Configuring Your Webhook
+
+Register your webhook URL with a single `PUT` call. Dutchman Bridge will immediately return a signing secret that you must store securely.
+
+```http
+PUT /api/v1/partner/v1/webhook
+```
+
+**Request body**
+
+```json
+{
+  "url": "https://your-domain.com/webhook/dutchman"
+}
+```
+
+**Example response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "url": "https://your-domain.com/webhook/dutchman",
+    "secret": "whsec_abc123..."
+  }
+}
+```
+
+<Warning>
+  The signing secret is returned **only once** — at the moment you set your URL. Store it immediately in a secure environment variable or secrets manager. You cannot retrieve it again after this call. If you lose it, use `POST /api/v1/partner/v1/webhook/rotate-secret` to generate a new one.
+</Warning>
+
+## Verifying Webhook Signatures
+
+Every webhook delivery includes an `X-Webhook-Signature` header containing an HMAC-SHA256 signature of the raw request body, computed using your signing secret. Always verify this signature before processing the event to ensure the request genuinely came from Dutchman Bridge.
+
+```javascript webhook-handler.js
+const crypto = require('crypto');
+
+function verifyWebhookSignature(rawBody, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(expected),
+    Buffer.from(signature)
+  );
+}
+```
+
+Use `crypto.timingSafeEqual` rather than a plain string comparison to prevent timing attacks. Reject any request where the signature does not match — do not process its payload.
+
+**Important implementation notes:**
+
+- Compute the HMAC over the **raw** (unparsed) request body, not the JSON-parsed object.
+- Read the signature from the `X-Webhook-Signature` header exactly as sent (hexadecimal string).
+- Return a `2xx` response as quickly as possible — do any heavy processing asynchronously to avoid delivery timeouts.
+
+## Webhook Event Types
+
+<Accordion title="KYC events">
+  | Event | Description |
+  |---|---|
+  | `kyc.tier1.approved` | Customer's Tier 1 KYC (BVN + NIN) was approved |
+  | `kyc.tier1.rejected` | Customer's Tier 1 KYC was rejected |
+  | `kyc.tier2.approved` | Customer's Tier 2 KYC (ID document) was approved |
+  | `kyc.tier2.rejected` | Customer's Tier 2 KYC was rejected |
+</Accordion>
+
+<Accordion title="Deposit events">
+  | Event | Description |
+  |---|---|
+  | `deposit.credited` | A crypto or fiat deposit has been credited to the customer's wallet |
+</Accordion>
+
+<Accordion title="Withdrawal events">
+  | Event | Description |
+  |---|---|
+  | `withdrawal.completed` | A withdrawal has been successfully processed |
+  | `withdrawal.failed` | A withdrawal attempt failed |
+  | `withdrawal.reversed` | A previously completed withdrawal was reversed |
+</Accordion>
+
+<Accordion title="Funding charge events">
+  | Event | Description |
+  |---|---|
+  | `funding_charge.completed` | A funding charge (bank transfer or EFT) was successfully applied |
+  | `funding_charge.failed` | A funding charge attempt failed |
+</Accordion>
+
+<Accordion title="Global Send events">
+  | Event | Description |
+  |---|---|
+  | `global_send.completed` | A cross-border payout was successfully delivered |
+  | `global_send.failed` | A cross-border payout failed to deliver |
+</Accordion>
+
+## Managing Webhook Deliveries
+
+Dutchman Bridge keeps a log of every delivery attempt, making it easy to debug failed events or replay them during development.
+
+**View the delivery log**
+
+Returns all delivery attempts, newest first. The response is paginated — use `meta.nextCursor` to page through older entries.
+
+```http
+GET /api/v1/partner/v1/webhook/deliveries
+```
+
+**Inspect a specific delivery**
+
+Returns the full details of one delivery, including the exact payload that was sent to your endpoint and the HTTP response your server returned.
+
+```http
+GET /api/v1/partner/v1/webhook/deliveries/{id}
+```
+
+**Replay a delivery**
+
+Resends a past delivery to your currently configured URL. The payload is identical to the original.
+
+```http
+POST /api/v1/partner/v1/webhook/deliveries/{id}/replay
+```
+
+<Tip>
+  Use the replay endpoint during development and testing to re-send events to your handler without needing to trigger real transactions. This is especially useful when iterating on your signature verification logic or event parsing code.
+</Tip>
+
+## Rotating the Signing Secret
+
+If your signing secret is compromised or you need to cycle it as part of a security rotation, generate a new one without changing your webhook URL.
+
+```http
+POST /api/v1/partner/v1/webhook/rotate-secret
+```
+
+**Example response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "secret": "whsec_newSecret..."
+  }
+}
+```
+
+Update your application to use the new secret immediately after rotating. Deliveries sent before the rotation used the old secret — if you need to verify historical deliveries, keep the old secret available until all relevant events have been processed.

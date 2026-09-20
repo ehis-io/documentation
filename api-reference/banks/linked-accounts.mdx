@@ -1,0 +1,251 @@
+---
+title: "Bank Account Management Endpoints"
+sidebarTitle: "Linked Accounts"
+description: "Verify, link, list, set default, and remove bank accounts for customer payouts using the Dutchman Bridge Partner API."
+---
+
+Linked bank accounts are the destination for a customer's withdrawals. Before linking an account, it is best practice to verify the account number to confirm ownership and retrieve the account name to show the customer. Customers can hold multiple linked accounts; one account must be designated as the default, and that default account is used whenever a withdrawal is initiated.
+
+## Endpoints
+
+```
+POST   https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/bank/verify-account
+POST   https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/accounts
+GET    https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/accounts
+PATCH  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/accounts/{accountId}/default
+DELETE https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/accounts/{accountId}
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## POST — Verify Account
+
+Resolve a bank account number to its registered account name. Use this to confirm the account belongs to the intended recipient before linking it. Calls the banking provider in real time.
+
+### Request Body
+
+<ParamField body="accountNumber" type="string" required>
+  The bank account number to verify.
+</ParamField>
+
+<ParamField body="bankCode" type="string" required>
+  The bank code for the account's bank. Use a value from the [List Banks](/api-reference/banks/list) endpoint.
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="accountName" type="string">
+  The registered name on the bank account, as returned by the banking provider.
+</ResponseField>
+
+<ResponseField name="accountNumber" type="string">
+  The bank account number that was verified.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/bank/verify-account \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "accountNumber": "0123456789",
+    "bankCode": "058"
+  }'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "accountName": "Amaka Obi",
+    "accountNumber": "0123456789"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Add Account
+
+Link a bank account to the customer's profile. If this is the customer's first linked account, it is automatically set as the default. Subsequent accounts can be promoted to default using the PATCH endpoint.
+
+### Request Body
+
+<ParamField body="accountNumber" type="string" required>
+  The bank account number to link.
+</ParamField>
+
+<ParamField body="bankCode" type="string" required>
+  The bank code for the account's bank. Use a value from the [List Banks](/api-reference/banks/list) endpoint.
+</ParamField>
+
+<ParamField body="bankName" type="string" required>
+  The display name of the bank (e.g., `"Guaranty Trust Bank"`). Used for display purposes only.
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="accountId" type="string">
+  Unique identifier for the linked account. Use this in the `PATCH` and `DELETE` endpoints.
+</ResponseField>
+
+<ResponseField name="accountNumber" type="string">
+  The linked bank account number.
+</ResponseField>
+
+<ResponseField name="bankName" type="string">
+  The bank name provided when the account was added.
+</ResponseField>
+
+<ResponseField name="accountName" type="string">
+  The registered account name as returned during verification.
+</ResponseField>
+
+<ResponseField name="isDefault" type="boolean">
+  `true` if this account is the customer's current default payout destination.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/accounts \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "accountNumber": "0123456789",
+    "bankCode": "058",
+    "bankName": "Guaranty Trust Bank"
+  }'
+```
+
+```json Request Body
+{
+  "accountNumber": "0123456789",
+  "bankCode": "058",
+  "bankName": "Guaranty Trust Bank"
+}
+```
+
+```json Response (201)
+{
+  "success": true,
+  "data": {
+    "accountId": "acct_01HABC111",
+    "accountNumber": "0123456789",
+    "bankName": "Guaranty Trust Bank",
+    "accountName": "Amaka Obi",
+    "isDefault": true
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## GET — List Accounts
+
+Returns all of the customer's linked payout accounts, with the default account first.
+
+### Response Fields (per account object)
+
+<ResponseField name="accountId" type="string">
+  Unique identifier for the linked account.
+</ResponseField>
+
+<ResponseField name="accountNumber" type="string">
+  The linked bank account number.
+</ResponseField>
+
+<ResponseField name="bankName" type="string">
+  The name of the bank.
+</ResponseField>
+
+<ResponseField name="accountName" type="string">
+  The registered name on the bank account.
+</ResponseField>
+
+<ResponseField name="isDefault" type="boolean">
+  `true` if this is the customer's active default payout account.
+</ResponseField>
+
+---
+
+## PATCH — Set Default Account
+
+Designates the specified linked account as the customer's default payout destination. All subsequent withdrawal requests will target this account. The previously default account is demoted automatically.
+
+No request body is required. The endpoint returns the updated account object with `isDefault: true`.
+
+---
+
+## DELETE — Remove Account
+
+Unlinks and permanently removes a bank account from the customer's profile. You cannot delete the customer's only linked account if a withdrawal is in progress.
+
+Returns `{ "success": true }` on success.
+
+---
+
+## Full Examples
+
+<CodeGroup>
+
+```bash List accounts
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/accounts \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```bash Set default account
+curl --request PATCH \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/accounts/acct_01HABC111/default \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```bash Delete account
+curl --request DELETE \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/accounts/acct_01HABC111 \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json List accounts — Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "accountId": "acct_01HABC111",
+      "accountNumber": "0123456789",
+      "bankName": "Guaranty Trust Bank",
+      "accountName": "Amaka Obi",
+      "isDefault": true
+    },
+    {
+      "accountId": "acct_01HABC222",
+      "accountNumber": "9876543210",
+      "bankName": "Access Bank",
+      "accountName": "Amaka Obi",
+      "isDefault": false
+    }
+  ]
+}
+```
+
+</CodeGroup>

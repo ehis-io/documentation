@@ -1,0 +1,146 @@
+---
+title: "Transaction History and Ledger Entries"
+sidebarTitle: "Transactions"
+description: "Dutchman Bridge records every credit and debit as a ledger entry. Learn how to retrieve, paginate, and interpret transaction history for your customers."
+---
+
+Every balance movement in Dutchman Bridge — whether it is a crypto deposit, a fiat withdrawal, an on/off-ramp conversion, an on-chain send, or a cross-border payout — is recorded as a ledger entry and made available through the transactions endpoint. This gives you a complete, auditable record of every financial event for each customer, which you can use to power in-app activity feeds, reconciliation exports, and support tooling.
+
+## Retrieving Transactions
+
+Fetch a customer's ledger history with:
+
+```
+GET /api/v1/partner/v1/customers/{customerId}/transactions
+```
+
+Results are returned newest first, cursor-paginated. The first call (without a `cursor` parameter) returns the most recent entries.
+
+## Query Parameters
+
+<ParamField query="cursor" type="string">
+  Pagination cursor. Pass the value of `meta.nextCursor` from the previous response to retrieve the next page of results. Omit on the first request.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of ledger entries to return per page. Use this to control page size in your UI or batch-processing logic.
+</ParamField>
+
+## Ledger Entry Object
+
+Each item in the `data` array is a ledger entry with the following fields:
+
+<ResponseField name="id" type="string">
+  Unique identifier for this ledger entry.
+</ResponseField>
+
+<ResponseField name="type" type="LedgerEntryType">
+  The kind of balance movement. Possible values:
+
+  | Value | Description |
+  |---|---|
+  | `deposit` | Crypto or fiat funds received into the wallet |
+  | `withdrawal` | Fiat paid out to a linked bank account |
+  | `buy` | Customer bought USDT using their fiat balance (on-ramp) |
+  | `sell` | Customer sold USDT for fiat (off-ramp) |
+  | `send` | USDT sent on-chain to an external address |
+  | `global_send` | Cross-border fiat payout to a recipient abroad |
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  The amount involved in this entry, expressed as a decimal string (e.g., `"50.00"`).
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  ISO currency code or asset ticker for the amount (e.g., `"NGN"`, `"USDT"`).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current processing status of the entry (e.g., `"completed"`, `"pending"`, `"failed"`).
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)">
+  Timestamp of when the ledger entry was created, in UTC (e.g., `"2024-11-15T14:32:00.000Z"`).
+</ResponseField>
+
+<ResponseField name="meta" type="object">
+  Type-specific metadata. Contents vary by entry type. Examples:
+  - For `deposit`: may include the blockchain transaction ID (`txid`) and network
+  - For `withdrawal`: may include the destination bank account details
+  - For `send`: includes the destination blockchain address and network
+  - For `global_send`: includes the recipient's details and corridor information
+</ResponseField>
+
+## Pagination
+
+Paginated responses include a `meta` object at the top level alongside `data`:
+
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "meta": {
+    "nextCursor": "eyJpZCI6IjAxSjNYWVoiLCJkaXIiOiJwcmV2In0",
+    "hasMore": true
+  }
+}
+```
+
+When `meta.hasMore` is `true`, there are more entries to fetch. Pass `meta.nextCursor` as the `cursor` query parameter in your next request. When `meta.hasMore` is `false`, you have reached the oldest entry.
+
+**Example: fetching the first page with `limit=20`**
+
+```bash
+curl -X GET "https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01ABCDEF/transactions?limit=20" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+**Example paginated response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "ledger_01HXYZ789",
+      "type": "deposit",
+      "amount": "100.00",
+      "currency": "USDT",
+      "status": "completed",
+      "createdAt": "2024-11-15T14:32:00.000Z",
+      "meta": {
+        "txid": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        "network": "TRC-20"
+      }
+    },
+    {
+      "id": "ledger_01HWXY456",
+      "type": "sell",
+      "amount": "50.00",
+      "currency": "USDT",
+      "status": "completed",
+      "createdAt": "2024-11-14T09:15:00.000Z",
+      "meta": {}
+    }
+  ],
+  "meta": {
+    "nextCursor": "eyJpZCI6ImxlZGdlcl8wMUhXWFk0NTYiLCJkaXIiOiJwcmV2In0",
+    "hasMore": true
+  }
+}
+```
+
+**Fetching the next page:**
+```bash
+curl -X GET "https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01ABCDEF/transactions?limit=20&cursor=eyJpZCI6ImxlZGdlcl8wMUhXWFk0NTYiLCJkaXIiOiJwcmV2In0" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+## Withdrawal History
+
+For withdrawal-specific records with detailed status tracking, use the dedicated withdrawals endpoint:
+
+```
+GET /api/v1/partner/v1/customers/{customerId}/withdrawals
+```
+
+This returns only withdrawal entries, each including the destination bank account details and a granular `status` field that tracks the payout through its processing states (e.g., `pending`, `processing`, `completed`, `failed`, `reversed`). Use this endpoint when you need to surface withdrawal status to a customer or investigate a specific payout.

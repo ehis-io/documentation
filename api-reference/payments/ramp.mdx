@@ -1,0 +1,257 @@
+---
+title: "On/Off Ramp Endpoints — Buy and Sell Stablecoin"
+sidebarTitle: "Ramp"
+description: "Quote and execute fiat-to-stablecoin (buy) and stablecoin-to-fiat (sell) conversions using live exchange rates."
+---
+
+The ramp endpoints let customers convert between their fiat balance and stablecoins (USDT/USDC) using live, all-in exchange rates. A **buy** converts fiat to stablecoin, debiting the customer's fiat balance and crediting their stablecoin wallet. A **sell** does the reverse — converting stablecoin to fiat. For both directions, always fetch a quote first to show the customer the rate, then call the execute endpoint to lock in and process the conversion.
+
+<Note>
+  Quote rates are **indicative** and reflect the live exchange rate at the time of the request. Rates can move between quoting and executing. Call the execute endpoint promptly after quoting to minimise slippage.
+</Note>
+
+## Endpoints
+
+```
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/rate
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/buy/quote
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/buy/execute
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/sell/networks
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/sell/quote
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/sell/execute
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## GET — Live Rate
+
+Returns the current all-in buy and sell rates for stablecoin conversions in the customer's local fiat currency. Use this to preview conversion rates in your UI before the customer decides to transact.
+
+### Response Fields
+
+<ResponseField name="usdtToBuy" type="number">
+  The fiat cost to buy 1 USDT (the all-in buy rate, including fees and spread).
+</ResponseField>
+
+<ResponseField name="usdtToSell" type="number">
+  The fiat amount received when selling 1 USDT (the all-in sell rate, after fees and spread).
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The local fiat currency the rates are expressed in (e.g., `NGN`, `ZAR`).
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/rate \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "usdtToBuy": 1620.00,
+    "usdtToSell": 1590.00,
+    "currency": "NGN"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Buy Quote
+
+Price a fiat-to-stablecoin conversion against the customer's fiat balance. Returns the stablecoin amount they will receive, the rate applied, and the fee.
+
+### Request Body
+
+<ParamField body="amount" type="number" required>
+  The fiat amount the customer wants to spend.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  The fiat currency to debit (e.g., `NGN`, `ZAR`).
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="usdtAmount" type="number">
+  The amount of USDT the customer will receive after fees.
+</ResponseField>
+
+<ResponseField name="fiatAmount" type="number">
+  The fiat amount that will be debited from the customer's balance.
+</ResponseField>
+
+<ResponseField name="rate" type="number">
+  The exchange rate applied (fiat per 1 USDT).
+</ResponseField>
+
+<ResponseField name="fee" type="number">
+  The fee charged for this conversion, in fiat.
+</ResponseField>
+
+---
+
+## POST — Buy Execute
+
+Execute a fiat-to-stablecoin conversion. Deducts the fiat amount from the customer's fiat balance and credits the equivalent USDT to their stablecoin wallet at the current live rate.
+
+### Request Body
+
+<ParamField body="amount" type="number" required>
+  The fiat amount to convert.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  The fiat currency to debit.
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="usdtCredited" type="number">
+  The amount of USDT credited to the customer's stablecoin wallet.
+</ResponseField>
+
+<ResponseField name="fiatDebited" type="number">
+  The fiat amount deducted from the customer's balance.
+</ResponseField>
+
+<ResponseField name="rate" type="number">
+  The exchange rate at which the conversion was executed.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL — buy/quote
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/buy/quote \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 162000,
+    "currency": "NGN"
+  }'
+```
+
+```json Response — buy/quote (200)
+{
+  "success": true,
+  "data": {
+    "usdtAmount": 99.38,
+    "fiatAmount": 162000,
+    "rate": 1620.00,
+    "fee": 1000
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## GET — Sell Networks
+
+Returns the list of blockchain networks the customer can deposit stablecoins on to fund a sell. Use this to show the customer which networks are available when they want to sell stablecoins back to fiat.
+
+---
+
+## POST — Sell Quote
+
+Price a stablecoin-to-fiat conversion. Returns the fiat amount the customer will receive, the rate applied, and the fee.
+
+### Request Body
+
+<ParamField body="usdtAmount" type="number" required>
+  The amount of USDT the customer wants to sell.
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="fiatAmount" type="number">
+  The fiat amount the customer will receive after fees.
+</ResponseField>
+
+<ResponseField name="rate" type="number">
+  The exchange rate applied (fiat per 1 USDT).
+</ResponseField>
+
+<ResponseField name="fee" type="number">
+  The fee charged for this conversion, in fiat.
+</ResponseField>
+
+---
+
+## POST — Sell Execute
+
+Execute a stablecoin-to-fiat conversion. Deducts the USDT amount from the customer's stablecoin wallet and credits the equivalent fiat to their local balance at the current live rate.
+
+### Request Body
+
+<ParamField body="usdtAmount" type="number" required>
+  The amount of USDT to convert to fiat.
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="fiatCredited" type="number">
+  The fiat amount credited to the customer's local balance.
+</ResponseField>
+
+<ResponseField name="usdtDebited" type="number">
+  The USDT amount deducted from the customer's stablecoin wallet.
+</ResponseField>
+
+<ResponseField name="rate" type="number">
+  The exchange rate at which the sell was executed.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL — sell/execute
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/sell/execute \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "usdtAmount": 100
+  }'
+```
+
+```json Request Body
+{
+  "usdtAmount": 100
+}
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "fiatCredited": 159000,
+    "usdtDebited": 100,
+    "rate": 1590.00
+  }
+}
+```
+
+</CodeGroup>

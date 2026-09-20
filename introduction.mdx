@@ -1,0 +1,87 @@
+---
+title: "Dutchman Bridge: Fintech Infrastructure for Partners"
+sidebarTitle: "Introduction"
+description: "Dutchman Bridge is a partner API for registering customers, running KYC, holding stablecoin and fiat balances, and enabling global money movement."
+---
+
+Dutchman Bridge is a fintech infrastructure platform that lets partner businesses embed financial services directly into their products. Whether you are building a neobank, a payments app, a remittance product, or any application that needs to move money for end-users, Dutchman Bridge gives you a single API surface to register customers, verify their identities, hold balances, and execute local and cross-border transactions — without building and maintaining the underlying financial rails yourself.
+
+## Key Capabilities
+
+The Partner API covers the full lifecycle of a financial product:
+
+- **Customer Registration** — Create and manage customer profiles under your partner account, with each customer scoped to your API key.
+- **Multi-Tier KYC** — Progressive identity verification across three tiers: Tier 1 (BVN + NIN), Tier 2 (government-issued ID document), and Tier 3 (date of birth + address for cross-border access).
+- **Wallets & Balances** — Each customer holds a USDT stablecoin balance and a local fiat balance. Retrieve live balances or stream real-time updates.
+- **Crypto Deposits** — Customers receive unique per-network USDT deposit addresses across multiple chains (e.g. Ethereum, Tron, BNB Chain), enabling multi-chain crypto on-ramps.
+- **Fiat Deposits** — Fund fiat balances via virtual bank accounts or card-based funding charges.
+- **On/Off Ramp** — Convert between stablecoins and local fiat currency at live rates. Quote before executing for full transparency on fees and exchange rates.
+- **Withdrawals** — Pay a customer's held fiat balance out to their linked bank account, with pre-flight quote support.
+- **Cross-Border Payouts (Global Send)** — Send funds across international corridors to supported destination countries, with per-corridor rate quoting.
+- **Receiving Accounts** — Open foreign-currency receiving accounts for customers to accept inbound international payments.
+- **Webhooks** — Subscribe to real-time event notifications for deposits, withdrawals, KYC state changes, and more. Manage your webhook URL, signing secret, and delivery history via the API.
+
+## How the Partner API Works
+
+All Partner API routes live under the base URL:
+
+```
+https://app.dutchmannetwork.online
+```
+
+Every request must include your partner API key in the `x-api-key` header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+All Partner API endpoints are prefixed `/api/v1/partner/v1/` and return a consistent response envelope:
+
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+Endpoints that return lists are cursor-paginated. The next page cursor is found at `meta.nextCursor` in the response:
+
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "meta": {
+    "nextCursor": "eyJpZCI6Ijk4NyJ9"
+  }
+}
+```
+
+Pass the cursor value as a `cursor` query parameter to retrieve the next page. When `meta.nextCursor` is absent or `null`, you have reached the last page.
+
+## What Makes Dutchman Bridge Unique
+
+- **Multi-Tier KYC built in** — Dutchman Bridge enforces a tiered compliance model so you don't have to design your own. Tier 1 unlocks basic wallet access; Tier 2 raises transaction limits; Tier 3 opens cross-border sending corridors. Re-verification requests raised by compliance admins are surfaced directly through the API.
+- **Multi-Chain Crypto Deposits** — Customers receive a unique deposit address on every supported chain. Deposits are detected automatically and credited to the customer's USDT balance.
+- **Integrated On/Off Ramp** — Buy stablecoin from a customer's fiat balance and sell stablecoin back to fiat in a single API call, with live rate previews before execution.
+- **Cross-Border Corridors** — Send money to international corridors with per-corridor pricing, beneficiary details, and compliance checks handled by the platform.
+
+## Explore the Docs
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    Register your first customer and check their wallet balance in under 10 minutes.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how to obtain, use, and rotate your partner API key securely.
+  </Card>
+  <Card title="Concepts" icon="book-open" href="/concepts/overview">
+    Understand customers, KYC tiers, wallets, and the transaction lifecycle.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Full reference for every Partner API endpoint, schema, and error code.
+  </Card>
+</CardGroup>
+
+<Note>
+  The Partner API routes are tagged `Partner API - ...` in the OpenAPI spec. Admin, internal, and provider-webhook routes are not part of the Partner integration surface.
+</Note>

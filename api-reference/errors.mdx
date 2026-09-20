@@ -1,0 +1,122 @@
+---
+title: "API Error Codes and Troubleshooting"
+sidebarTitle: "Errors"
+description: "Dutchman Bridge API error responses, HTTP status codes, and guidance on resolving common issues in your Partner API integration."
+---
+
+Dutchman Bridge uses standard HTTP status codes and a consistent JSON error format to communicate failures. Every error response includes a `success: false` flag, a `message` field with a human-readable explanation, and an `error` object containing a machine-readable code and an optional `details` array listing per-field validation issues.
+
+## Error Response Format
+
+Every failed request returns a response body in the following shape:
+
+```json
+{
+  "success": false,
+  "message": "Customer not found",
+  "error": {
+    "code": "CUSTOMER_NOT_FOUND",
+    "details": []
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `success` | boolean | Always `false` for error responses |
+| `message` | string | Human-readable description of what went wrong |
+| `error.code` | string | Machine-readable error identifier for programmatic handling |
+| `error.details` | array | List of field-level validation errors, populated on `400` responses |
+
+## HTTP Status Codes
+
+| Status Code | Meaning | When It Occurs |
+|---|---|---|
+| `200 OK` | Request succeeded | The request was processed and a result is returned |
+| `201 Created` | Resource created successfully | A new customer, account, or resource was registered |
+| `400 Bad Request` | Invalid request body or missing required fields | The request payload failed schema validation; check `error.details` |
+| `401 Unauthorized` | Missing or invalid `x-api-key` | The `x-api-key` header is absent, malformed, or revoked |
+| `403 Forbidden` | Valid key but insufficient permissions | Your API key does not have access to this resource or operation |
+| `404 Not Found` | Resource does not exist | The customer, account, or other resource ID was not found |
+| `409 Conflict` | Duplicate resource | A customer is already registered with that email under your account |
+| `422 Unprocessable Entity` | Business rule violation | The request is well-formed but cannot be executed (e.g., insufficient balance, KYC not approved) |
+| `429 Too Many Requests` | Rate limit exceeded | Your integration has sent too many requests in a short window |
+| `500 Internal Server Error` | Unexpected server error | An unhandled exception occurred on the server; contact support if this persists |
+
+## Common Error Scenarios
+
+The sections below cover the most frequent errors encountered during integration and explain how to resolve them.
+
+<AccordionGroup>
+
+<Accordion title="401 Unauthorized — Invalid or missing API key">
+  This error means the `x-api-key` header was not included in the request, or the key provided is incorrect or has been revoked.
+
+  **How to fix:**
+  - Confirm that every request includes the `x-api-key` header.
+  - Double-check that the key value matches the one shown in your partner dashboard.
+  - If you suspect the key has been compromised, rotate it immediately via your dashboard and update all integrations with the new key.
+
+  ```bash
+  # Correct usage
+  curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers \
+    -H "x-api-key: YOUR_API_KEY"
+  ```
+</Accordion>
+
+<Accordion title="400 Bad Request — Validation errors">
+  A `400` response means the request body did not pass schema validation. One or more required fields may be missing, or a field value has the wrong type or format.
+
+  **How to fix:**
+  - Inspect the `error.details` array in the response body. Each entry identifies the specific field that failed and describes why.
+  - Ensure all required fields are present and that values conform to the expected types (e.g., valid email format, ISO date strings, numeric amounts).
+
+  ```json
+  {
+    "success": false,
+    "message": "Validation failed",
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "details": [
+        { "field": "email", "message": "must be a valid email address" }
+      ]
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="409 Conflict — Customer already registered">
+  A `409` on the customer registration endpoint means a customer with the provided email address already exists under your partner account.
+
+  **How to fix:**
+  - Do not attempt to register the customer again.
+  - Use `GET /api/v1/partner/v1/customers/{customerId}` to retrieve the existing customer record and continue the flow from there.
+  - If you do not have the `customerId`, use the customer list endpoint with an email filter to look them up.
+</Accordion>
+
+<Accordion title="422 Insufficient balance">
+  A `422` with an insufficient-balance message means the customer does not have enough fiat or USDT balance to complete the requested transaction.
+
+  **How to fix:**
+  - Call `GET /api/v1/partner/v1/customers/{customerId}/balance` before initiating a withdrawal, send, ramp, or global send to confirm the customer has sufficient funds.
+  - If the balance is too low, prompt the customer to fund their account before retrying the transaction.
+</Accordion>
+
+<Accordion title="422 KYC not approved for this operation">
+  A `422` related to KYC means the customer's current verification tier is not sufficient to perform the requested action (e.g., initiating a cross-border payout requires Tier 3 KYC).
+
+  **How to fix:**
+  - Call `GET /api/v1/partner/v1/customers/{customerId}/verification` to get the customer's current tier status and a description of what needs to be submitted next.
+  - Guide the customer through the appropriate KYC submission endpoint (`/kyc/tier1`, `/kyc/tier2`, or `/kyc/tier3`) and wait for approval before retrying the operation.
+</Accordion>
+
+<Accordion title="404 Customer not found">
+  A `404` on any customer-scoped endpoint means no customer matching the provided `customerId` was found under your partner account.
+
+  **How to fix:**
+  - Verify that the `customerId` value is correct and has not been truncated or modified.
+  - Confirm that the customer was registered using the same API key (i.e., under the same partner account) that you are currently using.
+  - If the customer was recently created, check that the registration request returned a `201` and that you stored the returned ID correctly.
+</Accordion>
+
+</AccordionGroup>

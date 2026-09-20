@@ -1,0 +1,80 @@
+---
+title: "Authenticate Requests to the Dutchman Bridge API"
+sidebarTitle: "Authentication"
+description: "Every Partner API request requires an x-api-key header. Learn how to obtain, use, and rotate your partner API key securely."
+---
+
+The Dutchman Bridge Partner API uses API key authentication. Every request your integration makes must carry a valid API key, which identifies your partner account and authorises access to the Partner API surface. There are no per-request tokens to exchange or OAuth flows to implement — a single `x-api-key` header is all that is required.
+
+## Your API Key
+
+Pass your API key as the `x-api-key` header on every request:
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+The key grants access to all Partner API routes under `/api/v1/partner/v1/`. Every call is scoped to your partner account — customers you create, transactions you initiate, and webhooks you configure are all isolated to your key.
+
+## Getting Your Key
+
+Contact Dutchman Bridge to have your partner account created and receive your initial API key. During onboarding you will also complete your business KYC (KYB), after which your key is activated for production use.
+
+Once your account is active, you can retrieve a fresh API key at any time from your partner console. The retrieval endpoint uses a bearer JWT from your console session — it is a partner management endpoint, not a Partner API endpoint, and does not require your existing `x-api-key`:
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/get-api-key \
+  -H "Authorization: Bearer YOUR_CONSOLE_JWT"
+```
+
+## Rotating Your Key
+
+To replace your current API key with a new one, call the rotation endpoint. This immediately invalidates the old key and returns a freshly generated replacement:
+
+```bash
+curl -X POST https://app.dutchmannetwork.online/api/v1/partner/rotate-api-key \
+  -H "Authorization: Bearer YOUR_CONSOLE_JWT"
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "apiKey": "pk_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+  }
+}
+```
+
+Store the new value from `data.apiKey` immediately and update all of your integrations before initiating the rotation.
+
+<Warning>
+  Rotating your key **immediately invalidates** the previous one. Any in-flight requests signed with the old key will fail with a 401 error. Update all services and environment variables that hold your API key before rotating.
+</Warning>
+
+## Security Best Practices
+
+<Tip>
+  - **Never commit your API key to source control.** Use environment variables (e.g. `DUTCHMAN_API_KEY`) or a secrets manager to inject the key at runtime.
+  - **Use separate keys per environment.** Work with Dutchman Bridge to provision distinct keys for development/staging and production.
+  - **Rotate keys periodically.** Even without a suspected compromise, regular rotation limits the blast radius of an undiscovered leak.
+  - **Restrict key access.** Only the services that need to call the Partner API should have access to the key value.
+</Tip>
+
+## Authentication Errors
+
+If a request is rejected for authentication or authorisation reasons, the API returns one of the following HTTP status codes:
+
+| Status Code | Meaning | Common Cause |
+|---|---|---|
+| `401 Unauthorized` | The API key is missing or invalid. | The `x-api-key` header was omitted, the key value is incorrect, or the key has been rotated and is no longer valid. |
+| `403 Forbidden` | The key is valid but lacks permission for this action. | The partner account has not completed KYB, the requested feature is not enabled for your account, or you are attempting to access a route outside the Partner API surface. |
+
+In both cases the response body follows the standard envelope and includes an error message to help diagnose the issue:
+
+```json
+{
+  "success": false,
+  "message": "Invalid or missing API key"
+}
+```

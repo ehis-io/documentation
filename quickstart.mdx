@@ -1,47 +1,174 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Dutchman Bridge in Minutes"
+sidebarTitle: "Quickstart"
+description: "Register your first customer, complete Tier 1 KYC, and check their wallet balance using the Dutchman Bridge Partner API in under 10 minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+This guide walks you through the core integration loop: obtaining your API key, registering a customer under your partner account, submitting their Tier 1 KYC, checking KYC status, and reading their wallet balance. By the end you will have made five real API calls and be ready to explore the full Partner API surface.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
 
-    ```bash
-    npm install your-package
-    ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+  <Step title="Obtain Your API Key">
+    Contact Dutchman Bridge to get your partner account provisioned. Once onboarded, you will receive an `x-api-key` value that identifies and authenticates your integration.
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+    Every request to the Partner API must include this key as a header:
 
-    ```bash
-    your-cli start
     ```
+    x-api-key: YOUR_API_KEY
+    ```
+
+    The base URL for all requests is:
+
+    ```
+    https://app.dutchmannetwork.online
+    ```
+
+    Keep your key secure — treat it like a password. See the [Authentication guide](/authentication) for details on key rotation and best practices.
   </Step>
+
+  <Step title="Register a Customer">
+    Create a customer record under your partner account by posting their basic profile information. The `country` field should be an ISO 3166-1 alpha-2 country code (e.g. `NG` for Nigeria).
+
+    <CodeGroup>
+
+    ```bash cURL
+    curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers \
+      -H "x-api-key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "ada.obi@example.com",
+        "firstName": "Ada",
+        "lastName": "Obi",
+        "phone": "+2348012345678",
+        "country": "NG"
+      }'
+    ```
+
+    </CodeGroup>
+
+    The response contains the new customer's record. The `id` field is the `customerId` you will use in every subsequent call for this customer.
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": "cus_01j9xk2m3n4p5q6r7s8t9u0v",
+        "email": "ada.obi@example.com",
+        "firstName": "Ada",
+        "lastName": "Obi",
+        "status": "active"
+      }
+    }
+    ```
+
+    <Note>
+      Save the `data.id` value — this is your `customerId` for all subsequent calls relating to this customer.
+    </Note>
+  </Step>
+
+  <Step title="Submit Tier 1 KYC">
+    Tier 1 verification unlocks basic wallet access for the customer. For Nigerian customers, Tier 1 requires their Bank Verification Number (BVN) and National Identification Number (NIN).
+
+    <CodeGroup>
+
+    ```bash cURL
+    curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cus_01j9xk2m3n4p5q6r7s8t9u0v/kyc/tier1 \
+      -H "x-api-key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "bvn": "12345678901",
+        "nin": "98765432100"
+      }'
+    ```
+
+    </CodeGroup>
+
+    A successful submission returns the tier number and a `pending` status while the verification is processed asynchronously:
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "tier": 1,
+        "status": "pending"
+      }
+    }
+    ```
+
+    Dutchman Bridge will verify the submitted credentials and update the KYC status. Subscribe to [webhooks](/api-reference/webhooks) to be notified when the status changes to `approved` or `rejected`.
+  </Step>
+
+  <Step title="Check KYC Status">
+    Poll the verification summary endpoint to see where the customer stands across all KYC tiers, and to determine what they need to submit next.
+
+    <CodeGroup>
+
+    ```bash cURL
+    curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cus_01j9xk2m3n4p5q6r7s8t9u0v/verification \
+      -H "x-api-key: YOUR_API_KEY"
+    ```
+
+    </CodeGroup>
+
+    The response includes a `tiers` array with the current status of each tier:
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "tiers": [
+          {
+            "tier": 1,
+            "status": "pending",
+            "submittedAt": "2024-11-14T10:23:41.000Z"
+          },
+          {
+            "tier": 2,
+            "status": "not_started"
+          },
+          {
+            "tier": 3,
+            "status": "not_started"
+          }
+        ],
+        "nextAction": "await_tier1_approval"
+      }
+    }
+    ```
+
+    Once Tier 1 moves to `approved`, the customer can deposit funds and access their wallet. Tier 2 (ID document) and Tier 3 (address + date of birth) unlock higher limits and cross-border sending respectively.
+  </Step>
+
+  <Step title="Check Wallet Balance">
+    Once a customer is registered (and after Tier 1 is approved), you can read their current wallet balance at any time. The response includes both their USDT stablecoin balance and their local fiat balance.
+
+    <CodeGroup>
+
+    ```bash cURL
+    curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cus_01j9xk2m3n4p5q6r7s8t9u0v/balance \
+      -H "x-api-key: YOUR_API_KEY"
+    ```
+
+    </CodeGroup>
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "usdt": "0.00",
+        "fiat": {
+          "currency": "NGN",
+          "amount": "0.00"
+        }
+      }
+    }
+    ```
+
+    Both balances start at zero. To fund the customer's fiat balance, retrieve their virtual bank account via `GET /api/v1/partner/v1/customers/{customerId}/virtual-account`. To fund their USDT balance, retrieve their on-chain deposit addresses via `GET /api/v1/partner/v1/customers/{customerId}/addresses`.
+
+    <Tip>
+      For a deeper walkthrough of the full customer onboarding flow — including document uploads for Tier 2, linking bank accounts, and funding — see the [Onboard a Customer guide](/guides/onboard-customer).
+    </Tip>
+  </Step>
+
 </Steps>
-
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>

@@ -1,0 +1,213 @@
+---
+title: "Foreign-Currency Receiving Account Endpoints"
+sidebarTitle: "Receiving Accounts"
+description: "Open, list, and refresh foreign-currency receiving accounts for customers, and track incoming international payment activity."
+---
+
+Foreign-currency receiving accounts give customers a dedicated bank account number in a supported foreign currency (for example, USD or GBP) that third parties can pay into directly. Funds received are converted and credited to the customer's Dutchman Bridge wallet. Opening an account is idempotent — calling it again for an existing currency returns the same account details.
+
+## Endpoints
+
+```
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/receiving-accounts/currencies
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/receiving-accounts/{currency}
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/receiving-accounts
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/receiving-accounts/activity
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/receiving-accounts/{currency}/refresh
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## GET — Supported Currencies
+
+Returns the list of foreign currencies the customer is eligible to receive payments in. Use this to populate a currency selector before opening an account.
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/receiving-accounts/currencies \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": ["USD", "GBP", "EUR"]
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Open Receiving Account
+
+Open a foreign-currency receiving account for the customer. This operation is idempotent — if the customer already has an account for the specified currency, the existing account details are returned unchanged. The `currency` is supplied as a path parameter.
+
+### Path Parameters
+
+<ParamField path="currency" type="string" required>
+  The ISO 4217 currency code of the foreign currency to open an account for (e.g., `USD`, `GBP`).
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="currency" type="string">
+  The currency code of the opened receiving account.
+</ResponseField>
+
+<ResponseField name="accountNumber" type="string">
+  The account number assigned to the customer for this currency.
+</ResponseField>
+
+<ResponseField name="bankName" type="string">
+  The name of the financial institution holding the receiving account.
+</ResponseField>
+
+<ResponseField name="accountName" type="string">
+  The name under which the account is registered — typically the customer's full name.
+</ResponseField>
+
+<ResponseField name="sortCode" type="string">
+  The sort code or routing number for the account, if applicable to the currency's banking system.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/receiving-accounts/USD \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "currency": "USD",
+    "accountNumber": "8001234567",
+    "bankName": "Community Federal Savings Bank",
+    "accountName": "Amaka Obi",
+    "sortCode": "026073150"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## GET — List Receiving Accounts
+
+Returns all foreign-currency receiving accounts the customer currently holds.
+
+### Response Fields (per account object)
+
+<ResponseField name="currency" type="string">
+  The currency code of the receiving account.
+</ResponseField>
+
+<ResponseField name="accountNumber" type="string">
+  The account number for this currency.
+</ResponseField>
+
+<ResponseField name="bankName" type="string">
+  The name of the holding financial institution.
+</ResponseField>
+
+<ResponseField name="accountName" type="string">
+  The registered account name.
+</ResponseField>
+
+<ResponseField name="sortCode" type="string">
+  The sort code or routing number for the account.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/receiving-accounts \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "currency": "USD",
+      "accountNumber": "8001234567",
+      "bankName": "Community Federal Savings Bank",
+      "accountName": "Amaka Obi",
+      "sortCode": "026073150"
+    },
+    {
+      "currency": "GBP",
+      "accountNumber": "12345678",
+      "bankName": "Modulr Finance",
+      "accountName": "Amaka Obi",
+      "sortCode": "040075"
+    }
+  ]
+}
+```
+
+</CodeGroup>
+
+---
+
+## GET — Payment Activity
+
+Returns payments seen on the customer's receiving accounts, including payments that are still in-flight (received by the provider but not yet settled). Use this to give customers visibility into incoming transfers.
+
+### Response Fields (per activity object)
+
+<ResponseField name="id" type="string">
+  Unique identifier for the incoming payment record.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The currency in which the payment was received.
+</ResponseField>
+
+<ResponseField name="amount" type="number">
+  The amount received in the foreign currency.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Payment status — e.g., `in_flight`, `settled`, `failed`.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the payment was first detected.
+</ResponseField>
+
+---
+
+## POST — Refresh Account
+
+Re-reads the account details for a specific currency from the underlying provider. Use this if you suspect account details have been updated upstream or if there was a provisioning delay when the account was first opened.
+
+### Path Parameters
+
+<ParamField path="currency" type="string" required>
+  The ISO 4217 currency code of the account to refresh (e.g., `USD`, `GBP`).
+</ParamField>
+
+Returns the refreshed account object with the same shape as the open-account response.

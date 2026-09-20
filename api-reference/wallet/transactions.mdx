@@ -1,0 +1,128 @@
+---
+title: "GET /api/v1/partner/v1/customers/{customerId}/transactions — Transactions"
+sidebarTitle: "Transactions"
+description: "Retrieve a cursor-paginated list of ledger entries (deposits, withdrawals, swaps, sends) for a customer, newest first."
+---
+
+This endpoint returns a customer's full transaction ledger — every credit and debit across deposits, withdrawals, on-ramp swaps, off-ramp sells, and on-chain sends. The list is sorted newest first and uses cursor-based pagination so you can efficiently page through large histories without missing entries caused by new transactions arriving between requests.
+
+## Endpoint
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/transactions
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+## Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="cursor" type="string">
+  Pagination cursor. Pass the value of `meta.nextCursor` from the previous response to fetch the next page. Omit on the first request.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of ledger entries to return per page. Defaults to the server-side default if not specified.
+</ParamField>
+
+## Response
+
+All responses follow the `{ success, data, meta }` envelope.
+
+<ResponseField name="data" type="array">
+  Array of ledger entry objects, sorted newest first.
+  <Expandable title="ledger entry fields">
+    <ResponseField name="id" type="string">
+      Unique ledger entry ID.
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      The type of ledger entry (`LedgerEntryType`). Examples include `deposit`, `withdrawal`, `buy`, `sell`, `send`, `receive`.
+    </ResponseField>
+    <ResponseField name="amount" type="string">
+      The amount involved in this entry as a decimal string.
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      The currency of the entry (e.g., `USDT`, `NGN`).
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Current status of the entry — e.g. `pending`, `completed`, `failed`.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when this ledger entry was created.
+    </ResponseField>
+    <ResponseField name="meta" type="object">
+      Additional context specific to the entry type, such as destination address for a send or bank details for a withdrawal.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="meta" type="object">
+  Pagination metadata.
+  <Expandable title="meta fields">
+    <ResponseField name="nextCursor" type="string">
+      Opaque cursor string. Pass this as `cursor` in your next request to retrieve the following page. `null` when there are no more entries.
+    </ResponseField>
+    <ResponseField name="hasMore" type="boolean">
+      `true` if there are additional entries beyond this page.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url 'https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/transactions?limit=10' \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "id": "ldg_01HYAB1111XXXX",
+      "type": "deposit",
+      "amount": "50.00",
+      "currency": "USDT",
+      "status": "completed",
+      "createdAt": "2024-06-22T10:05:00.000Z",
+      "meta": {
+        "network": "TRC-20",
+        "txHash": "0xabc123..."
+      }
+    },
+    {
+      "id": "ldg_01HYAB2222YYYY",
+      "type": "sell",
+      "amount": "30.00",
+      "currency": "USDT",
+      "status": "completed",
+      "createdAt": "2024-06-21T08:30:00.000Z",
+      "meta": {
+        "fiatAmount": "46200.00",
+        "fiatCurrency": "NGN"
+      }
+    }
+  ],
+  "meta": {
+    "nextCursor": "cursor_eyJpZCI6Imxkz...",
+    "hasMore": true
+  }
+}
+```
+
+</CodeGroup>

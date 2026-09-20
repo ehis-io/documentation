@@ -1,0 +1,96 @@
+---
+title: "GET /api/v1/partner/v1/customers/{customerId} — Get Customer"
+sidebarTitle: "Get Customer"
+description: "Retrieve a customer's profile by their customerId. Returns core profile fields and current KYC status."
+---
+
+Use this endpoint to fetch the current state of any customer registered under your partner account. The response includes all core profile fields alongside the customer's current KYC status, which you can use to determine what verification steps remain before they can transact.
+
+## Endpoint
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+## Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID returned when the customer was registered. This is the `id` field from the [`POST /customers`](/api-reference/customers/register) response.
+</ParamField>
+
+## Response
+
+All responses follow the `{ success, data }` envelope. On success, `data` contains the customer's profile.
+
+<ResponseField name="id" type="string">
+  Unique customer ID (`customerId`).
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The email address associated with this customer.
+</ResponseField>
+
+<ResponseField name="firstName" type="string">
+  Customer's first name.
+</ResponseField>
+
+<ResponseField name="lastName" type="string">
+  Customer's last name.
+</ResponseField>
+
+<ResponseField name="phone" type="string">
+  Customer's phone number in E.164 format.
+</ResponseField>
+
+<ResponseField name="country" type="string">
+  ISO 3166-1 alpha-2 country code for the customer's country.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Account status. One of `active` or `suspended`.
+</ResponseField>
+
+<ResponseField name="kycStatus" type="string">
+  Overall KYC status reflecting the customer's highest completed verification tier.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the customer account was created.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "id": "cust_01HXYZ1234ABCDEF",
+    "email": "amaka.obi@example.com",
+    "firstName": "Amaka",
+    "lastName": "Obi",
+    "phone": "+2348012345678",
+    "country": "NG",
+    "status": "active",
+    "kycStatus": "tier1_approved",
+    "createdAt": "2024-06-15T09:23:11.000Z"
+  }
+}
+```
+
+</CodeGroup>

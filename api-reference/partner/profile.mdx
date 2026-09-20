@@ -1,0 +1,127 @@
+---
+title: "Partner Profile and API Key Management"
+sidebarTitle: "Profile"
+description: "Retrieve your partner account profile, rotate your API key, and update company and webhook details via the Partner Management API."
+---
+
+The Partner Management endpoints let you inspect and maintain your own partner account — separate from customer management. You can retrieve your profile and current approval status, rotate your API key in the event of a compromise, and update your company information. These endpoints are authenticated with your existing `x-api-key` in the same way as all other Partner API calls.
+
+## Endpoints
+
+```
+GET  https://app.dutchmannetwork.online/api/v1/partner/profile
+POST https://app.dutchmannetwork.online/api/v1/partner/rotate-api-key
+POST https://app.dutchmannetwork.online/api/v1/partner/update-company-details
+POST https://app.dutchmannetwork.online/api/v1/partner/update-webhook
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## GET — Partner Profile
+
+Returns the profile for your partner account, including your company name, current approval status, KYC/KYB status, and the timestamp of your last API key rotation.
+
+### Response Fields
+
+<ResponseField name="companyName" type="string">
+  The registered name of your company on the Dutchman Bridge platform.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The current status of your partner account (e.g., `active`, `pending`, `suspended`).
+</ResponseField>
+
+<ResponseField name="kycStatus" type="string">
+  The KYB (Know Your Business) verification status of your partner account (e.g., `approved`, `pending`, `rejected`).
+</ResponseField>
+
+<ResponseField name="apiKeyLastRotated" type="string">
+  ISO 8601 timestamp of when your API key was most recently rotated. `null` if it has never been rotated.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/profile \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "companyName": "Acme Fintech Ltd",
+    "status": "active",
+    "kycStatus": "approved",
+    "apiKeyLastRotated": "2024-06-01T10:00:00.000Z"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Rotate API Key
+
+Generates a new API key for your partner account and immediately invalidates the old one. The new key is returned in the response.
+
+<Warning>
+  Rotating your API key **immediately invalidates the old key**. Any in-flight requests using the old key will fail with a `401` error. Update all environments, CI pipelines, and secret stores with the new key before or immediately after rotating.
+</Warning>
+
+### Response Fields
+
+<ResponseField name="apiKey" type="string">
+  Your new API key. Copy and store it securely — it will not be shown again after this response.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/rotate-api-key \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "apiKey": "pk_live_4f3a9b2c1d8e7f6a0b5c..."
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Update Company Details
+
+Update the company information associated with your partner account (such as company name, address, or contact details). The accepted fields depend on your account's current KYB stage.
+
+No request body is documented here as the accepted fields are determined by your account configuration. Contact Dutchman Bridge support for the full schema applicable to your account.
+
+---
+
+## POST — Update Webhook (Legacy)
+
+Update your partner webhook URL. This is the legacy management endpoint for setting a webhook URL.
+
+<Note>
+  Prefer the [`PUT /api/v1/partner/v1/webhook`](/api-reference/webhooks/configuration) endpoint for webhook configuration. It provides additional capabilities including signing secret management, delivery logs, and replay functionality.
+</Note>

@@ -1,0 +1,174 @@
+---
+title: "Send Cross-Border Payments with Global Send"
+sidebarTitle: "Global Send"
+description: "Initiate cross-border payouts to supported international corridors using Dutchman Bridge Global Send. Requires Tier 3 KYC verification."
+---
+
+Global Send enables your customers to send money internationally to supported corridors. Because cross-border payouts are subject to regulatory requirements, this feature requires Tier 3 KYC (date of birth and address) before a customer can initiate a transfer. Always quote before initiating so the customer can review the fee and exchange rate upfront.
+
+## Prerequisites
+
+<Warning>
+  Global Send requires Tier 3 KYC — the customer must have submitted their date of birth and address and been approved before they can use this feature. Check the customer's verification status before presenting the Global Send UI.
+</Warning>
+
+To confirm whether a customer is cleared for Global Send, call:
+
+```http
+GET /api/v1/partner/v1/customers/{customerId}/global-send/verification
+```
+
+If the customer is not yet Tier 3 verified, direct them through the KYC flow before proceeding. See the [KYC guide](/guides/onboard-customer) for details on submitting Tier 3.
+
+## Available Corridors
+
+Retrieve the list of countries the customer can send to, along with supported currencies, payment rails, and transfer limits.
+
+```http
+GET /api/v1/partner/v1/customers/{customerId}/global-send/corridors
+```
+
+Each corridor entry includes:
+
+| Field | Description |
+|---|---|
+| `country` | ISO 3166-1 alpha-2 country code (e.g. `GH`, `KE`, `GB`) |
+| `currency` | Destination currency code (e.g. `GHS`, `KES`, `GBP`) |
+| `rails` | Payment network used for delivery |
+| `minAmount` | Minimum send amount in the source currency |
+| `maxAmount` | Maximum send amount in the source currency |
+
+**Example cURL**
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/global-send/corridors \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+**Example response**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "country": "GH",
+      "currency": "GHS",
+      "rails": "bank_transfer",
+      "minAmount": 500,
+      "maxAmount": 500000
+    },
+    {
+      "country": "KE",
+      "currency": "KES",
+      "rails": "mobile_money",
+      "minAmount": 500,
+      "maxAmount": 500000
+    },
+    {
+      "country": "GB",
+      "currency": "GBP",
+      "rails": "bank_transfer",
+      "minAmount": 500,
+      "maxAmount": 500000
+    }
+  ]
+}
+```
+
+## Initiating a Cross-Border Payment
+
+Use the quote-then-initiate flow to send funds internationally. The quote shows the customer exactly what they will pay and what the beneficiary will receive before any money moves.
+
+<Steps>
+  <Step title="Get a quote">
+    Price the transfer to see the destination amount, exchange rate, fee, and total debit from the customer's balance.
+
+    ```http
+    POST /api/v1/partner/v1/customers/{customerId}/global-send/quote
+    ```
+
+    **Request body**
+
+    ```json
+    {
+      "destinationCountry": "GH",
+      "destinationCurrency": "GHS",
+      "sendAmount": 1000,
+      "sourceCurrency": "NGN"
+    }
+    ```
+
+    **Example response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "destinationAmount": "47.30",
+        "exchangeRate": "21.14",
+        "fee": "150",
+        "totalDebit": "1150"
+      }
+    }
+    ```
+
+    Present `destinationAmount`, `fee`, and `totalDebit` to the customer so they can confirm the transfer before you proceed.
+  </Step>
+
+  <Step title="Provide beneficiary details and initiate">
+    Once the customer confirms, submit the full transfer request with beneficiary details. The `sendAmount` and corridor fields must match what was quoted.
+
+    ```http
+    POST /api/v1/partner/v1/customers/{customerId}/global-send/initiate
+    ```
+
+    **Request body**
+
+    ```json
+    {
+      "destinationCountry": "GH",
+      "destinationCurrency": "GHS",
+      "sendAmount": 1000,
+      "sourceCurrency": "NGN",
+      "beneficiary": {
+        "firstName": "Kwame",
+        "lastName": "Mensah",
+        "accountNumber": "1234567890",
+        "bankCode": "GH_STB",
+        "country": "GH"
+      }
+    }
+    ```
+
+    **Example response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "payoutId": "gsp_xyz",
+        "status": "pending",
+        "destinationAmount": "47.30"
+      }
+    }
+    ```
+
+    Store the `payoutId` — you will use it to correlate incoming webhook events back to this transfer.
+  </Step>
+
+  <Step title="Track the transfer status">
+    Global Send payouts are processed asynchronously. You can monitor progress in two ways:
+
+    - **Webhooks** — subscribe to `global_send.completed` and `global_send.failed` events (see the [Webhooks guide](/guides/webhooks)) for real-time status updates.
+    - **Polling** — fetch the customer's withdrawal history and filter by `payoutId`:
+
+    ```http
+    GET /api/v1/partner/v1/customers/{customerId}/withdrawals
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  Before initiating, use `GET /api/v1/partner/v1/customers/{customerId}/banks?country=GH` to list the destination country's supported banks and their codes. Pass the correct `bankCode` in the beneficiary object to avoid failed payouts caused by an unrecognised bank.
+</Tip>

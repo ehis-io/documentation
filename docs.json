@@ -1,72 +1,130 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "theme": "luma",
+  "name": "Dutchman Bridge",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#1A3C6E",
+    "light": "#2E6FC9",
+    "dark": "#0F2547"
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    "pages": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/overview",
+              "concepts/customers-kyc",
+              "concepts/wallets-balances",
+              "concepts/transactions"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/onboard-customer",
+              "guides/fiat-deposits",
+              "guides/crypto-deposits",
+              "guides/withdrawals",
+              "guides/ramp",
+              "guides/global-send",
+              "guides/receiving-accounts",
+              "guides/webhooks"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Customers",
+            "pages": [
+              "api-reference/customers/register",
+              "api-reference/customers/get",
+              "api-reference/customers/full-snapshot",
+              "api-reference/customers/profile",
+              "api-reference/customers/kyc"
+            ]
+          },
+          {
+            "group": "Wallet & Balances",
+            "pages": [
+              "api-reference/wallet/balance",
+              "api-reference/wallet/transactions",
+              "api-reference/wallet/deposit-addresses",
+              "api-reference/wallet/virtual-account"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api-reference/payments/withdraw",
+              "api-reference/payments/funding-charge",
+              "api-reference/payments/send",
+              "api-reference/payments/global-send",
+              "api-reference/payments/ramp"
+            ]
+          },
+          {
+            "group": "Banks & Accounts",
+            "pages": [
+              "api-reference/banks/list",
+              "api-reference/banks/linked-accounts",
+              "api-reference/banks/receiving-accounts"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/configuration",
+              "api-reference/webhooks/deliveries"
+            ]
+          },
+          {
+            "group": "Partner",
+            "pages": [
+              "api-reference/partner/profile",
+              "api-reference/partner/features",
+              "api-reference/partner/countries"
+            ]
+          }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    ]
   },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "API Playground",
+        "href": "https://app.dutchmannetwork.online/api/docs"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Get API Access",
+      "href": "https://app.dutchmannetwork.online"
     }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
   },
   "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    "socials": {}
   }
 }

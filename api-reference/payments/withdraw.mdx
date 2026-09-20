@@ -1,0 +1,169 @@
+---
+title: "Withdrawal Endpoints — Quote and Execute"
+sidebarTitle: "Withdraw"
+description: "GET a withdrawal quote with fees, then POST to pay out a customer's fiat balance to their default linked bank account."
+---
+
+Withdrawals move a customer's fiat balance to their linked bank account. The flow is always two steps: first fetch a quote to show the customer the net amount they will receive after fees, then submit the withdrawal. Both steps require the `customerId` path parameter and your partner API key.
+
+<Warning>
+  Both endpoints use the customer's **default** bank account as the payout destination. Make sure the customer has a default account set before calling either endpoint — use the [Linked Accounts](/api-reference/banks/linked-accounts) endpoints to add and designate a default account.
+</Warning>
+
+## Endpoints
+
+```
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/withdraw/quote
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/withdraw
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## GET — Withdrawal Quote
+
+Price a withdrawal before submitting it. Pass the intended amount and currency as query parameters to receive a breakdown of the gross amount, the applicable fee, and the net amount the customer will receive.
+
+### Query Parameters
+
+<ParamField query="amount" type="number" required>
+  The gross withdrawal amount in the specified fiat currency.
+</ParamField>
+
+<ParamField query="currency" type="string" required>
+  The fiat currency code for the withdrawal (e.g., `NGN`, `ZAR`, `GHS`).
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="amount" type="number">
+  The gross withdrawal amount as submitted in the request.
+</ResponseField>
+
+<ResponseField name="fee" type="number">
+  The fee deducted from the gross amount before crediting the bank account.
+</ResponseField>
+
+<ResponseField name="netAmount" type="number">
+  The amount that will actually be credited to the customer's bank account (`amount - fee`).
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The fiat currency code of the quoted withdrawal.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url 'https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/withdraw/quote?amount=50000&currency=NGN' \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "amount": 50000,
+    "fee": 250,
+    "netAmount": 49750,
+    "currency": "NGN"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Execute Withdrawal
+
+Submit the withdrawal and pay out the customer's fiat balance to their default linked bank account. The response includes a `withdrawalId` you can use to track the payout's progress.
+
+### Request Body
+
+<ParamField body="amount" type="number" required>
+  The gross withdrawal amount in the specified currency.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  The fiat currency code for the withdrawal (e.g., `NGN`, `ZAR`, `GHS`).
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="withdrawalId" type="string">
+  Unique identifier for the withdrawal. Use this to look up or track the payout.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the withdrawal. One of `pending`, `processing`, `completed`, `failed`, or `reversed`.
+</ResponseField>
+
+<ResponseField name="amount" type="number">
+  The gross withdrawal amount that was submitted.
+</ResponseField>
+
+<ResponseField name="fee" type="number">
+  The fee deducted from the gross amount.
+</ResponseField>
+
+<ResponseField name="netAmount" type="number">
+  The net amount credited to the customer's bank account.
+</ResponseField>
+
+### Withdrawal Statuses
+
+| Status | Description |
+|---|---|
+| `pending` | Withdrawal received and queued for processing. |
+| `processing` | Payout has been submitted to the banking partner. |
+| `completed` | Funds have been successfully credited to the bank account. |
+| `failed` | The payout could not be completed. No funds were debited. |
+| `reversed` | A completed withdrawal was reversed and the balance returned. |
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/withdraw \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 50000,
+    "currency": "NGN"
+  }'
+```
+
+```json Request Body
+{
+  "amount": 50000,
+  "currency": "NGN"
+}
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "withdrawalId": "wdl_01HABC123XYZ",
+    "status": "pending",
+    "amount": 50000,
+    "fee": 250,
+    "netAmount": 49750
+  }
+}
+```
+
+</CodeGroup>

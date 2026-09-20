@@ -1,0 +1,108 @@
+---
+title: "Accept USDT and USDC Crypto Deposits"
+sidebarTitle: "Crypto Deposits"
+description: "Retrieve customer USDT/USDC deposit addresses across multiple blockchain networks and monitor incoming crypto transactions automatically."
+---
+
+Each customer registered under your partner account is automatically assigned unique USDT/USDC deposit addresses across all supported blockchain networks. When a customer sends stablecoins to one of these addresses, Dutchman Bridge detects the on-chain transaction, waits for the required confirmations, and credits the customer's USDT balance — no manual intervention required on your side.
+
+## Getting Deposit Addresses
+
+Fetch all of a customer's deposit addresses in a single call. The response contains one entry per network, each with the network identifier, supported currency, and the deposit address.
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/addresses \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "network": "TRC-20",
+      "currency": "USDT",
+      "address": "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "network": "ERC-20",
+      "currency": "USDT",
+      "address": "0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "network": "BEP-20",
+      "currency": "USDT",
+      "address": "0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  ]
+}
+```
+
+Each address is unique to the customer and permanent — you can cache them safely and display them repeatedly without re-fetching.
+
+<Tip>
+  Always display the correct network label (e.g., "TRC-20 / Tron", "ERC-20 / Ethereum", "BEP-20 / BSC") alongside the deposit address. Sending USDT on the wrong network may result in permanently lost funds that cannot be recovered.
+</Tip>
+
+## How Deposits Are Credited
+
+Dutchman Bridge continuously monitors every customer deposit address on-chain. When an inbound transfer is detected and confirmed, the following happens automatically:
+
+1. The USDT amount is credited to the customer's stablecoin balance.
+2. A webhook event is dispatched to your configured webhook endpoint.
+3. The transaction appears in the customer's transaction history.
+
+There is nothing you need to do after displaying the deposit address to the customer. The entire detection-and-credit flow is handled by Dutchman Bridge infrastructure.
+
+## Monitoring Deposits
+
+Use any combination of the following endpoints to stay up to date on a customer's deposit activity.
+
+**Check current balance**
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/balance \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "usdt": {
+      "amount": "250.00"
+    },
+    "fiat": {
+      "amount": "0",
+      "currency": "NGN"
+    }
+  }
+}
+```
+
+**Stream live balance updates (Server-Sent Events)**
+
+For real-time balance changes without polling, connect to the balance stream endpoint. The server emits an updated balance object on every credit or debit event.
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/balance/stream \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Accept: text/event-stream"
+```
+
+**View transaction history**
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/transactions \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+Transactions are cursor-paginated. Use the `meta.nextCursor` value in the response to fetch the next page, and check `meta.hasMore` to determine whether more pages exist.
+
+**Webhooks**
+
+For production integrations, configuring a webhook is the most reliable way to receive real-time deposit notifications. See the [Webhooks guide](/guides/webhooks) for instructions on setting up your endpoint and verifying event signatures.

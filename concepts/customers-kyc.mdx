@@ -1,0 +1,122 @@
+---
+title: "Customers and KYC Verification Tiers Explained"
+sidebarTitle: "Customers & KYC"
+description: "Learn how Dutchman Bridge customers are registered and verified through three KYC tiers, and how tier status unlocks financial features."
+---
+
+Every end-user of your product is a "customer" in Dutchman Bridge, registered through your partner account via the API. Customers are fully scoped to you — they cannot interact with Dutchman Bridge directly, and they are invisible to other partners. Before a customer can access any financial service, they must pass the appropriate KYC verification tier. This page explains how to register customers, what each tier requires, and how to track and respond to KYC status changes.
+
+## Customer Registration
+
+Create a new customer record by posting their basic profile details:
+
+```
+POST /api/v1/partner/v1/customers
+```
+
+**Request body:**
+```json
+{
+  "email": "ada.okonkwo@example.com",
+  "firstName": "Ada",
+  "lastName": "Okonkwo",
+  "phone": "+2348012345678",
+  "country": "NG"
+}
+```
+
+**Response fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | The customer's unique identifier (`customerId`) — store this, it is used in every subsequent API call |
+| `email` | string | The customer's email address |
+| `firstName` | string | Customer's first name |
+| `lastName` | string | Customer's last name |
+| `kycStatus` | string | The customer's current KYC approval state |
+| `status` | string | Account status (e.g., `active`, `suspended`) |
+
+<Note>
+The `id` returned in this response is your `customerId`. It is the single key identifier in every Partner API route that operates on a specific customer — `/api/v1/partner/v1/customers/{customerId}/...`.
+</Note>
+
+## KYC Tiers
+
+Dutchman Bridge uses a progressive three-tier verification model. Each tier unlocks additional capabilities and higher transaction limits. Tiers must be completed in order.
+
+| Tier | Requirements | What It Unlocks |
+|---|---|---|
+| **Tier 1** | BVN (Bank Verification Number) + NIN (National Identification Number) | Basic wallet access — funding and low-value transactions |
+| **Tier 2** | Government-issued ID document + selfie | Higher transaction limits and expanded wallet operations |
+| **Tier 3** | Date of birth + residential address | Cross-border corridor access (global send) |
+
+Submit each tier via its dedicated endpoint once the customer has provided the required information:
+
+- `POST /api/v1/partner/v1/customers/{customerId}/kyc/tier1`
+- `POST /api/v1/partner/v1/customers/{customerId}/kyc/tier2`
+- `POST /api/v1/partner/v1/customers/{customerId}/kyc/tier3`
+
+## KYC Status Values
+
+After each tier submission, the resulting KYC record carries one of four statuses:
+
+<AccordionGroup>
+  <Accordion title="pending">
+    The submission has been received and is awaiting review by the Dutchman Bridge compliance team. No action is required from you at this stage. Poll `GET /api/v1/partner/v1/customers/{customerId}/verification` or listen for a webhook event to know when the review completes.
+  </Accordion>
+  <Accordion title="approved">
+    The tier has been successfully verified. The customer can now access the capabilities unlocked by this tier. The `GET /api/v1/partner/v1/customers/{customerId}/verification` summary will reflect the new tier state.
+  </Accordion>
+  <Accordion title="rejected">
+    The submission was reviewed and did not pass. The rejection reason is returned in the KYC record. Depending on your product flow, you may present the reason to the customer and invite them to restart the tier submission with corrected information.
+  </Accordion>
+  <Accordion title="requires_resubmission">
+    The compliance team has reviewed the submission and determined that additional or corrected information is needed. Check `GET /api/v1/partner/v1/customers/{customerId}/kyc/reverification` for the specific items the customer must resubmit.
+  </Accordion>
+</AccordionGroup>
+
+## Checking KYC Status
+
+Two endpoints give you visibility into a customer's verification state:
+
+**Verification summary** — a high-level view of each tier's current state, plus guidance on what to submit next:
+```
+GET /api/v1/partner/v1/customers/{customerId}/verification
+```
+
+**Full KYC record list** — the complete history of all KYC submissions for the customer, newest first:
+```
+GET /api/v1/partner/v1/customers/{customerId}/kyc
+```
+
+Use the summary endpoint for day-to-day status checks and to determine what to render in your onboarding UI. Use the full record list when you need audit history or want to surface the reason for a past rejection.
+
+## Document Upload (Required for Tier 2)
+
+Before submitting Tier 2, you must upload the customer's identity document and selfie as separate upload requests. The upload endpoint accepts the file and returns a document reference ID:
+
+```
+POST /api/v1/partner/v1/customers/{customerId}/kyc/documents
+```
+
+Supported document types:
+- Government-issued ID document (passport, national ID card, driver's licence)
+- Selfie / liveness image
+
+The API returns a document reference ID for each upload. Pass those reference IDs in the body of your `POST /api/v1/partner/v1/customers/{customerId}/kyc/tier2` submission. Documents are not stored longer than necessary for compliance review.
+
+You can also run a pre-flight selfie quality check before submitting Tier 2 to catch poor-quality images early:
+
+```
+POST /api/v1/partner/v1/customers/{customerId}/kyc/selfie-check
+```
+
+<Note>
+**Re-verification:** A Dutchman Bridge admin may occasionally request that a customer re-verify one or more items — for example, if a document has expired or additional information is needed. Check for any open re-verification requests at:
+
+```
+GET /api/v1/partner/v1/customers/{customerId}/kyc/reverification
+```
+
+If a request exists, the response will include the specific items the customer needs to resubmit. Build this check into your app's session startup or profile screen so customers are notified promptly.
+</Note>

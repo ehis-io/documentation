@@ -1,0 +1,167 @@
+{
+  "projectType": "api-service",
+  "projectName": "Dutchman Bridge",
+  "projectDescription": "Dutchman Bridge is a fintech infrastructure API that lets partner businesses register and KYC their customers, hold stablecoin and fiat balances, and move money via deposits, withdrawals, on/off-ramp conversions, and cross-border payouts.",
+  "theme": "luma",
+  "primaryColor": "#1A3C6E",
+  "lightColor": "#2E6FC9",
+  "darkColor": "#0F2547",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/overview",
+              "concepts/customers-kyc",
+              "concepts/wallets-balances",
+              "concepts/transactions"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/onboard-customer",
+              "guides/fiat-deposits",
+              "guides/crypto-deposits",
+              "guides/withdrawals",
+              "guides/ramp",
+              "guides/global-send",
+              "guides/receiving-accounts",
+              "guides/webhooks"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Customers",
+            "pages": [
+              "api-reference/customers/register",
+              "api-reference/customers/get",
+              "api-reference/customers/full-snapshot",
+              "api-reference/customers/profile",
+              "api-reference/customers/kyc"
+            ]
+          },
+          {
+            "group": "Wallet & Balances",
+            "pages": [
+              "api-reference/wallet/balance",
+              "api-reference/wallet/transactions",
+              "api-reference/wallet/deposit-addresses",
+              "api-reference/wallet/virtual-account"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api-reference/payments/withdraw",
+              "api-reference/payments/funding-charge",
+              "api-reference/payments/send",
+              "api-reference/payments/global-send",
+              "api-reference/payments/ramp"
+            ]
+          },
+          {
+            "group": "Banks & Accounts",
+            "pages": [
+              "api-reference/banks/list",
+              "api-reference/banks/linked-accounts",
+              "api-reference/banks/receiving-accounts"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/configuration",
+              "api-reference/webhooks/deliveries"
+            ]
+          },
+          {
+            "group": "Partner",
+            "pages": [
+              "api-reference/partner/profile",
+              "api-reference/partner/features",
+              "api-reference/partner/countries"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Customer registration and multi-tier KYC (Tier 1 BVN/NIN, Tier 2 ID document, Tier 3 address/DOB)",
+    "USDT and local fiat wallet balances per customer",
+    "Fiat deposits via virtual bank accounts and bank-transfer/EFT charges",
+    "Crypto deposits via per-network USDT/USDC deposit addresses (multi-chain)",
+    "Fiat withdrawals to linked bank accounts with pre-flight quotes",
+    "On/off-ramp: buy stablecoin from fiat balance, sell stablecoin back to fiat",
+    "On-chain USDT/USDC sends with network selection and fee quotes",
+    "Cross-border payouts to international corridors",
+    "Foreign-currency receiving accounts for inbound international payments",
+    "Webhook event delivery with signing secret, replay, and delivery logs",
+    "Feature flags per partner to enable/disable capabilities",
+    "API key management with rotation"
+  ],
+  "publicApiSurface": [
+    "POST /api/v1/partner/v1/customers — Register customer",
+    "GET /api/v1/partner/v1/customers/{customerId} — Get customer",
+    "GET /api/v1/partner/v1/customers/{customerId}/full — Full customer snapshot",
+    "GET/PATCH /api/v1/partner/v1/customers/{customerId}/profile — Customer profile",
+    "GET /api/v1/partner/v1/customers/{customerId}/verification — KYC summary",
+    "POST /api/v1/partner/v1/customers/{customerId}/kyc/tier1 — Submit Tier 1 KYC",
+    "POST /api/v1/partner/v1/customers/{customerId}/kyc/tier2 — Submit Tier 2 KYC",
+    "POST /api/v1/partner/v1/customers/{customerId}/kyc/tier3 — Submit Tier 3 KYC",
+    "POST /api/v1/partner/v1/customers/{customerId}/kyc/documents — Upload KYC document",
+    "GET /api/v1/partner/v1/customers/{customerId}/balance — USDT + fiat balance",
+    "GET /api/v1/partner/v1/customers/{customerId}/transactions — Transaction history",
+    "GET /api/v1/partner/v1/customers/{customerId}/addresses — Deposit addresses",
+    "GET /api/v1/partner/v1/customers/{customerId}/virtual-account — Virtual bank account",
+    "GET /api/v1/partner/v1/customers/{customerId}/withdraw/quote — Withdrawal quote",
+    "POST /api/v1/partner/v1/customers/{customerId}/withdraw — Execute withdrawal",
+    "POST /api/v1/partner/v1/customers/{customerId}/funding/charge — Initiate funding charge",
+    "POST /api/v1/partner/v1/customers/{customerId}/buy/quote — Buy (fiat→stablecoin) quote",
+    "POST /api/v1/partner/v1/customers/{customerId}/buy/execute — Execute buy",
+    "POST /api/v1/partner/v1/customers/{customerId}/sell/quote — Sell (stablecoin→fiat) quote",
+    "POST /api/v1/partner/v1/customers/{customerId}/sell/execute — Execute sell",
+    "GET /api/v1/partner/v1/customers/{customerId}/send/networks — Available send networks",
+    "POST /api/v1/partner/v1/customers/{customerId}/send/quote — On-chain send quote",
+    "POST /api/v1/partner/v1/customers/{customerId}/send — Execute on-chain send",
+    "GET /api/v1/partner/v1/customers/{customerId}/global-send/corridors — Cross-border corridors",
+    "POST /api/v1/partner/v1/customers/{customerId}/global-send/quote — Cross-border quote",
+    "POST /api/v1/partner/v1/customers/{customerId}/global-send/initiate — Initiate cross-border send",
+    "GET /api/v1/partner/v1/customers/{customerId}/banks — List banks",
+    "POST /api/v1/partner/v1/customers/{customerId}/bank/verify-account — Verify bank account",
+    "POST /api/v1/partner/v1/customers/{customerId}/accounts — Link bank account",
+    "GET /api/v1/partner/v1/customers/{customerId}/accounts — List linked accounts",
+    "GET /api/v1/partner/v1/customers/{customerId}/receiving-accounts — Foreign receiving accounts",
+    "POST /api/v1/partner/v1/customers/{customerId}/receiving-accounts/{currency} — Open receiving account",
+    "GET /api/v1/partner/v1/webhook — Webhook config",
+    "PUT /api/v1/partner/v1/webhook — Set webhook URL",
+    "POST /api/v1/partner/v1/webhook/rotate-secret — Rotate webhook secret",
+    "GET /api/v1/partner/v1/webhook/deliveries — Delivery log",
+    "GET /api/v1/partner/v1/features — Feature flags",
+    "GET /api/v1/partner/v1/countries — Enabled countries",
+    "POST /api/v1/partner/rotate-api-key — Rotate API key"
+  ]
+}

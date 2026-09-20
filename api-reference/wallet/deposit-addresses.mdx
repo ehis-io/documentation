@@ -1,0 +1,85 @@
+---
+title: "GET /api/v1/partner/v1/customers/{customerId}/addresses — Deposit Addresses"
+sidebarTitle: "Deposit Addresses"
+description: "Retrieve the customer's USDT/USDC deposit addresses across all supported blockchain networks (TRC-20, ERC-20, BEP-20, etc.)."
+---
+
+Each customer on Dutchman Bridge is assigned dedicated deposit addresses across all supported blockchain networks. When a customer sends USDT or USDC to one of these addresses on the correct network, the funds are automatically credited to their Dutchman wallet. This endpoint returns the full list of network/address pairs so you can display them in your app's deposit flow.
+
+## Endpoint
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/addresses
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+## Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+## Response
+
+All responses follow the `{ success, data }` envelope. On success, `data` is an array of deposit address objects — one entry per supported network.
+
+<ResponseField name="data" type="array">
+  Array of deposit address objects.
+  <Expandable title="address object fields">
+    <ResponseField name="network" type="string">
+      The blockchain network identifier (e.g., `TRC-20`, `ERC-20`, `BEP-20`).
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      The stablecoin supported on this network (e.g., `USDT`, `USDC`).
+    </ResponseField>
+    <ResponseField name="address" type="string">
+      The customer's deposit address on this network.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/addresses \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "network": "TRC-20",
+      "currency": "USDT",
+      "address": "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE"
+    },
+    {
+      "network": "ERC-20",
+      "currency": "USDT",
+      "address": "0x4e9ce36e442e55ecd9025b9a6e0d88485d628a67"
+    },
+    {
+      "network": "BEP-20",
+      "currency": "USDT",
+      "address": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+    }
+  ]
+}
+```
+
+</CodeGroup>
+
+<Warning>
+  Always display the correct network name alongside the deposit address. Sending assets on the wrong network (for example, sending TRC-20 USDT to an ERC-20 address) may result in the **permanent and irrecoverable loss of funds**. Make the network label prominent and unambiguous in your UI.
+</Warning>

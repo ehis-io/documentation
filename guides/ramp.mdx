@@ -1,0 +1,178 @@
+---
+title: "Convert Between Fiat and Stablecoins with On/Off Ramp"
+sidebarTitle: "On/Off Ramp"
+description: "Use Dutchman Bridge on/off-ramp to buy stablecoins from a customer's fiat balance or sell stablecoins back to fiat using live exchange rates."
+---
+
+Dutchman Bridge on/off-ramp lets your customers convert between local fiat and USDT/USDC directly from their wallet balances. The flow is always quote-then-execute — no funds move until you explicitly call the execute endpoint, giving your customers a chance to review the rate and fee before committing.
+
+## Check Live Rates
+
+Before quoting, you can fetch the current all-in rates for a customer's local fiat currency. This is useful for displaying indicative buy/sell prices in your UI without initiating a transaction.
+
+```http
+GET /api/v1/partner/v1/customers/{customerId}/rate
+```
+
+**Example response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "usdtToBuy": "1650.00",
+    "usdtToSell": "1640.00",
+    "currency": "NGN"
+  }
+}
+```
+
+`usdtToBuy` is the fiat cost per USDT when purchasing stablecoin; `usdtToSell` is the fiat amount received per USDT when selling.
+
+## Buying Stablecoin (Fiat → USDT)
+
+Use the buy flow to convert a customer's fiat balance into USDT. Always get a quote first so the customer can see the exact amount they will receive before you execute.
+
+<Steps>
+  <Step title="Get a buy quote">
+    Submit the fiat amount to price the conversion.
+
+    ```http
+    POST /api/v1/partner/v1/customers/{customerId}/buy/quote
+    ```
+
+    **Request body**
+
+    ```json
+    {
+      "amount": 50000,
+      "currency": "NGN"
+    }
+    ```
+
+    **Example response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "usdtAmount": "30.30",
+        "fiatAmount": "50000",
+        "rate": "1650.00",
+        "fee": "500"
+      }
+    }
+    ```
+
+    The response shows the USDT the customer will receive (`usdtAmount`), the fiat that will be debited (`fiatAmount`), the applied exchange rate, and the transaction fee — all denominated in the customer's local currency.
+  </Step>
+
+  <Step title="Execute the buy">
+    Once the customer confirms, execute the conversion using the same amount. The fiat balance is debited and USDT is credited atomically.
+
+    ```http
+    POST /api/v1/partner/v1/customers/{customerId}/buy/execute
+    ```
+
+    **Request body**
+
+    ```json
+    {
+      "amount": 50000,
+      "currency": "NGN"
+    }
+    ```
+
+    **Example response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "usdtCredited": "30.30",
+        "fiatDebited": "50000",
+        "rate": "1650.00"
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Quote rates are indicative. The final rate applied at execution may differ slightly due to market movement between the quote and execute calls. Execute promptly after quoting to minimize rate slippage.
+</Note>
+
+## Selling Stablecoin (USDT → Fiat)
+
+Use the sell flow to convert a customer's USDT balance back into local fiat. The three-step process lets the customer review the payout amount before any funds move.
+
+<Steps>
+  <Step title="Check available networks">
+    Retrieve the blockchain networks the customer can sell stablecoin from. This list is tied to the customer's active deposit balances.
+
+    ```http
+    GET /api/v1/partner/v1/customers/{customerId}/sell/networks
+    ```
+
+    The response returns each supported network along with its identifier, so you can present the customer with a choice if they hold stablecoin across multiple networks.
+  </Step>
+
+  <Step title="Get a sell quote">
+    Submit the USDT amount to price the conversion to fiat.
+
+    ```http
+    POST /api/v1/partner/v1/customers/{customerId}/sell/quote
+    ```
+
+    **Request body**
+
+    ```json
+    {
+      "usdtAmount": "30.00"
+    }
+    ```
+
+    **Example response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "fiatAmount": "49200.00",
+        "rate": "1640.00",
+        "fee": "300"
+      }
+    }
+    ```
+
+    Show the customer the `fiatAmount` they will receive and the `fee` that will be deducted before they confirm.
+  </Step>
+
+  <Step title="Execute the sell">
+    Once the customer confirms, execute the conversion. The USDT balance is debited and the fiat equivalent is credited.
+
+    ```http
+    POST /api/v1/partner/v1/customers/{customerId}/sell/execute
+    ```
+
+    **Request body**
+
+    ```json
+    {
+      "usdtAmount": "30.00"
+    }
+    ```
+
+    **Example response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "fiatCredited": "49200.00",
+        "usdtDebited": "30.00"
+      }
+    }
+    ```
+  </Step>
+</Steps>

@@ -1,0 +1,97 @@
+---
+title: "How Dutchman Bridge Works: Platform Overview"
+sidebarTitle: "Overview"
+description: "Understand the Dutchman Bridge platform model: partners, customers, KYC tiers, wallets, and how money moves through the system."
+---
+
+Dutchman Bridge is a B2B fintech infrastructure platform. As a partner, you integrate once against the Dutchman Bridge API and gain the ability to register your end-users, verify their identities, hold stablecoin and local-currency balances on their behalf, and move money in and out — all without building the underlying financial rails yourself. Your end-users are represented in the system as "customers" scoped entirely to your partner account.
+
+## Platform Model
+
+The three core entities in Dutchman Bridge and how they relate to one another:
+
+<CardGroup cols={3}>
+  <Card title="Partner" icon="building">
+    Your business. You authenticate with an `x-api-key` header and make calls on behalf of your customers. You control which customers are registered, manage their KYC journey, and trigger financial operations.
+  </Card>
+  <Card title="Customers" icon="users">
+    Your end-users, registered under your account via the Partner API. Each customer has a unique `customerId` that is the key identifier across every route. Customers cannot call the API directly — all actions go through you.
+  </Card>
+  <Card title="Wallets" icon="wallet">
+    Every customer automatically receives a dual wallet: a USDT stablecoin balance and a local-currency fiat balance. Wallets are funded via crypto deposit addresses or a virtual bank account, and drawn down through withdrawals, on-chain sends, and cross-border payouts.
+  </Card>
+</CardGroup>
+
+## The Integration Flow
+
+A typical Dutchman Bridge integration follows four sequential steps from onboarding a new user to unlocking financial services:
+
+<Steps>
+  <Step title="Register the Customer">
+    Call `POST /api/v1/partner/v1/customers` with the customer's basic profile — name, email, phone, and country. The API returns a `customerId` you store and reference in every subsequent call.
+  </Step>
+  <Step title="Run KYC">
+    Walk the customer through Dutchman Bridge's three-tier KYC process. Tier 1 (BVN + NIN) unlocks basic wallet access; Tier 2 (government ID + selfie) raises transaction limits; Tier 3 (date of birth + address) enables cross-border corridor access.
+  </Step>
+  <Step title="Fund the Wallet">
+    Customers can fund their USDT balance by depositing crypto to their per-network deposit addresses (TRC-20, ERC-20, BEP-20), or fund their fiat balance by making a local bank transfer to their virtual bank account.
+  </Step>
+  <Step title="Use Financial Services">
+    Once funded and verified, customers can buy/sell stablecoins (on/off-ramp), send USDT on-chain, initiate cross-border payouts, and withdraw fiat to a linked bank account.
+  </Step>
+</Steps>
+
+## Supported Countries
+
+Dutchman Bridge maintains a list of countries that are currently enabled for customer onboarding. You can retrieve this list at any time:
+
+```
+GET /api/v1/partner/v1/countries
+```
+
+The response includes each country's currency code, enabled status, and any country-specific KYC requirements. Because requirements vary by jurisdiction, always check this endpoint before building a country-specific onboarding flow rather than hardcoding assumptions.
+
+## Feature Flags
+
+Not every partner account has access to every capability. Dutchman Bridge uses per-partner feature flags to gate things like cross-border payouts, on/off-ramp, and receiving accounts. Query your enabled features with:
+
+```
+GET /api/v1/partner/v1/features
+```
+
+Each feature has a `status` of `LIVE`, `COMING_SOON`, or `OFF`. Build your product UI conditionally based on this response so that users are never presented with a capability your account cannot yet exercise.
+
+## Response Format
+
+Every Partner API response follows the same envelope:
+
+**Success:**
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+**Paginated list:**
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "meta": {
+    "nextCursor": "cursor_token_here",
+    "hasMore": true
+  }
+}
+```
+
+**Error:**
+```json
+{
+  "success": false,
+  "message": "A human-readable description of what went wrong",
+  "error": { ... }
+}
+```
+
+Always check `success` before reading `data`. On paginated endpoints, pass `cursor=<nextCursor>` in the next request to retrieve the following page. When `hasMore` is `false`, you have reached the end of the list.

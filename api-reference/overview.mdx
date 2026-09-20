@@ -1,0 +1,111 @@
+---
+title: "Dutchman Bridge Partner API Reference"
+sidebarTitle: "Overview"
+description: "Complete reference for the Dutchman Bridge Partner API. Authenticate with x-api-key, use the base URL, and expect consistent JSON responses."
+---
+
+The Dutchman Bridge Partner API is a REST API served over HTTPS. It lets your business register customers, guide them through KYC, hold stablecoin and fiat balances on their behalf, and move money in and out through deposits, withdrawals, on/off-ramp, and cross-border payouts. All requests must include your partner API key in the `x-api-key` header. There is no OAuth or session token required for Partner API endpoints.
+
+## Base URL
+
+All Partner API endpoints are available at the following base URL:
+
+```
+https://app.dutchmannetwork.online
+```
+
+Every Partner API route is prefixed with `/api/v1/partner/v1/`. For example, the customer registration endpoint is:
+
+```
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers
+```
+
+## Authentication
+
+Every request to the Partner API must include your API key in the `x-api-key` HTTP header. You can obtain and rotate your key from the Dutchman Bridge partner dashboard.
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+Keep your API key secret. Do not include it in client-side code or commit it to version control. If you suspect your key has been compromised, rotate it immediately from your partner dashboard.
+
+## Request Format
+
+Send JSON request bodies with the `Content-Type: application/json` header. For endpoints that accept file uploads (such as KYC document submissions), use `multipart/form-data` instead.
+
+All endpoints scoped to your partner account are under the `/api/v1/partner/v1/` path prefix. Routes outside this prefix (admin, internal signer, provider webhooks) are internal and require a different authentication mechanism — they are not part of the Partner API.
+
+## Response Format
+
+All API responses return JSON. Every response includes a top-level `success` boolean that indicates whether the request was processed successfully.
+
+<CodeGroup>
+
+```json Success
+{
+  "success": true,
+  "data": {
+    "id": "cus_01HZ...",
+    "email": "alice@example.com",
+    "status": "active"
+  }
+}
+```
+
+```json Error
+{
+  "success": false,
+  "message": "Customer not found",
+  "error": {
+    "code": "CUSTOMER_NOT_FOUND",
+    "details": []
+  }
+}
+```
+
+</CodeGroup>
+
+| Field | Type | Description |
+|---|---|---|
+| `success` | boolean | `true` on success, `false` on failure |
+| `data` | object \| array | The response payload (success responses only) |
+| `message` | string | Human-readable error description (error responses only) |
+| `error.code` | string | Machine-readable error code (error responses only) |
+| `error.details` | array | Per-field validation errors, if any |
+
+## Pagination
+
+List endpoints return cursor-based pagination. The response includes a `meta` object alongside `data`:
+
+```json
+{
+  "success": true,
+  "data": [...],
+  "meta": {
+    "nextCursor": "eyJpZCI6Mn0=",
+    "hasMore": true
+  }
+}
+```
+
+To fetch the next page, pass the `nextCursor` value as the `cursor` query parameter on your next request. Use the `limit` parameter to control how many records are returned per page (the default varies by endpoint).
+
+<Tip>
+When `meta.hasMore` is `false`, you have reached the last page and there are no more records to fetch.
+</Tip>
+
+## Rate Limiting
+
+<Note>
+Rate limits apply to all Partner API requests. The specific limits vary by account tier. Contact Dutchman Bridge support to learn about the rate limits for your account, or to request an increase.
+</Note>
+
+## Interactive Playground
+
+You can explore every endpoint, inspect schemas, and send live test requests directly from the OpenAPI playground.
+
+<Card title="API Playground" icon="play" href="https://app.dutchmannetwork.online/api/docs">
+  Explore and test all endpoints in the interactive OpenAPI playground.
+</Card>

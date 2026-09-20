@@ -1,0 +1,226 @@
+---
+title: "Onboard a Customer with KYC Verification"
+sidebarTitle: "Onboard Customer"
+description: "Step-by-step guide to registering a new customer in Dutchman Bridge and completing all three KYC tiers to unlock full financial services."
+---
+
+Before a customer can hold balances, make deposits, or send funds through Dutchman Bridge, they must be registered under your partner account and verified through Dutchman's tiered KYC process. This guide walks you through every step — from the initial registration call to monitoring final approval status — so your integration handles the full onboarding lifecycle correctly.
+
+<Steps>
+
+  <Step title="Register the Customer">
+    Create a customer record under your partner account. This generates the `customerId` you will use on every subsequent call for that customer.
+
+    ```bash
+    curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers \
+      -H "x-api-key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "user@example.com",
+        "firstName": "Ada",
+        "lastName": "Obi",
+        "phone": "+2348012345678",
+        "country": "NG"
+      }'
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": "cust_abc123",
+        "email": "user@example.com",
+        "status": "active"
+      }
+    }
+    ```
+
+    Save the `data.id` value as your `customerId`. You will need it for all KYC and wallet operations.
+  </Step>
+
+  <Step title="Check What KYC Is Needed">
+    Before submitting any KYC data, retrieve the customer's current verification state. The response tells you which tiers are pending and what action to take next.
+
+    ```bash
+    curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/verification \
+      -H "x-api-key: YOUR_API_KEY"
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "tiers": [
+          { "tier": 1, "status": "not_started", "required": true },
+          { "tier": 2, "status": "not_started", "required": true },
+          { "tier": 3, "status": "not_started", "required": false }
+        ],
+        "nextAction": "submit_tier1"
+      }
+    }
+    ```
+
+    Use `nextAction` to drive your UI logic and always start from the lowest incomplete tier.
+  </Step>
+
+  <Step title="Submit Tier 1 — BVN and NIN">
+    Tier 1 verifies the customer's Bank Verification Number (BVN) and National Identification Number (NIN). This is the baseline check required before any financial services can be unlocked.
+
+    ```bash
+    curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/kyc/tier1 \
+      -H "x-api-key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "bvn": "12345678901",
+        "nin": "98765432109"
+      }'
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "tier": 1,
+        "status": "pending"
+      }
+    }
+    ```
+
+    A `pending` status means the check has been submitted and is under review. Continue to the next tier while Tier 1 is being processed.
+  </Step>
+
+  <Step title="Upload ID Document and Selfie for Tier 2">
+    Tier 2 requires a government-issued ID document and a selfie. Upload each as a separate multipart form-data request, specifying the `type` field to distinguish them.
+
+    **Upload ID document**
+
+    ```bash
+    curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/kyc/documents \
+      -H "x-api-key: YOUR_API_KEY" \
+      -F "file=@/path/to/id_document.jpg" \
+      -F "type=id_document"
+    ```
+
+    **Upload selfie**
+
+    ```bash
+    curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/kyc/documents \
+      -H "x-api-key: YOUR_API_KEY" \
+      -F "file=@/path/to/selfie.jpg" \
+      -F "type=selfie"
+    ```
+
+    **Response (for each upload)**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "documentId": "doc_xyz789"
+      }
+    }
+    ```
+
+    Save both document IDs — you will reference them when submitting Tier 2.
+  </Step>
+
+  <Step title="Validate the Selfie (Optional)">
+    Before submitting Tier 2, you can run an optional liveness and quality check on the uploaded selfie. This catches problems early and avoids a rejection loop.
+
+    ```bash
+    curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/kyc/selfie-check \
+      -H "x-api-key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "documentId": "doc_xyz789"
+      }'
+    ```
+
+    If the check returns any quality warnings, prompt the customer to retake the selfie before proceeding.
+  </Step>
+
+  <Step title="Submit Tier 2 — ID Document">
+    With both documents uploaded, submit Tier 2 by referencing the document IDs obtained in Step 4.
+
+    ```bash
+    curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/kyc/tier2 \
+      -H "x-api-key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "documentId": "doc_xyz789",
+        "selfieId": "doc_selfie001"
+      }'
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "tier": 2,
+        "status": "pending"
+      }
+    }
+    ```
+
+    The status will remain `pending` until a compliance reviewer approves or rejects the submission.
+  </Step>
+
+  <Step title="Submit Tier 3 — Date of Birth and Address (Cross-Border)">
+    Tier 3 collects the customer's date of birth and residential address. It is required only for customers who need access to Global Send cross-border payouts.
+
+    ```bash
+    curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/kyc/tier3 \
+      -H "x-api-key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "dateOfBirth": "1990-05-20",
+        "address": {
+          "street": "123 Main St",
+          "city": "Lagos",
+          "state": "Lagos",
+          "country": "NG"
+        }
+      }'
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "tier": 3,
+        "status": "pending"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Monitor KYC Status">
+    Poll the verification endpoint or listen for webhook events to track tier approvals and rejections in real time.
+
+    ```bash
+    curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/verification \
+      -H "x-api-key: YOUR_API_KEY"
+    ```
+
+    Webhook events are the recommended approach for production integrations — they eliminate the need for polling and give you immediate status updates. See the [Webhooks guide](/guides/webhooks) for configuration details.
+
+    <Note>
+      Tier 3 is only required if the customer needs access to cross-border Global Send. Tiers 1 and 2 are required for all other financial services.
+    </Note>
+
+    <Warning>
+      If a tier is rejected, check the `rejectionReason` field in the KYC record and resubmit with corrected data. If re-verification has been requested by an admin, retrieve the outstanding request details from `GET /api/v1/partner/v1/customers/{customerId}/kyc/reverification` and act on each item accordingly.
+    </Warning>
+  </Step>
+
+</Steps>

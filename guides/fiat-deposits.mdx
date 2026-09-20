@@ -1,0 +1,156 @@
+---
+title: "Fund Customer Wallets with Fiat Deposits"
+sidebarTitle: "Fiat Deposits"
+description: "Accept fiat currency deposits into customer wallets using virtual bank accounts or direct funding charges including bank transfer and EFT (ZAR)."
+---
+
+Dutchman Bridge provides two ways to fund a customer's fiat wallet balance: a **virtual bank account** that accepts standing bank transfers at any time, and **funding charges** that initiate a one-off bank transfer or an EFT redirect for a specific amount. Choose the method that best fits your product experience — many integrations offer both.
+
+## Method 1: Virtual Bank Account
+
+Each customer is assigned a dedicated virtual bank account in their local currency. The customer can transfer funds to this account from any bank at any time; Dutchman Bridge detects the incoming transfer and credits the wallet automatically.
+
+**Retrieve the virtual account details**
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/virtual-account \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "accountNumber": "0123456789",
+    "bankName": "Wema Bank",
+    "accountName": "Dutchman / Ada Obi",
+    "currency": "NGN"
+  }
+}
+```
+
+Display the `accountNumber`, `bankName`, and `accountName` to your customer. They can use these details for any future transfer — the account is permanent and reusable.
+
+## Method 2: Funding Charges
+
+A funding charge initiates a one-off deposit request for a specific amount. For NGN, you receive bank account details to present to the customer. For ZAR, you receive a redirect URL that the customer must visit to authorize the EFT payment.
+
+**Initiate a funding charge**
+
+```bash
+curl -X POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/funding/charge \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 10000,
+    "currency": "NGN",
+    "method": "bank_transfer"
+  }'
+```
+
+The `method` field accepts `"bank_transfer"` for NGN one-off transfers and `"eft"` for ZAR EFT redirects.
+
+<Tabs>
+  <Tab title="Bank Transfer">
+    **Request**
+
+    ```json
+    {
+      "amount": 10000,
+      "currency": "NGN",
+      "method": "bank_transfer"
+    }
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "chargeId": "chg_abc123",
+        "method": "bank_transfer",
+        "status": "pending",
+        "amount": "10000",
+        "currency": "NGN",
+        "bankDetails": {
+          "accountNumber": "9876543210",
+          "bankName": "Wema Bank",
+          "accountName": "Dutchman Bridge / Ada Obi",
+          "expiresAt": "2024-01-15T12:00:00Z"
+        }
+      }
+    }
+    ```
+
+    Present the `bankDetails` to the customer. Once they complete the transfer, the charge status moves to `completed` and the wallet balance is credited.
+  </Tab>
+  <Tab title="EFT (ZAR)">
+    **Request**
+
+    ```json
+    {
+      "amount": 5000,
+      "currency": "ZAR",
+      "method": "eft"
+    }
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "chargeId": "chg_def456",
+        "method": "eft",
+        "status": "pending",
+        "amount": "5000",
+        "currency": "ZAR",
+        "redirectUrl": "https://pay.example.com/authorize?token=abc123"
+      }
+    }
+    ```
+
+    Redirect the customer to the `redirectUrl` to authorize the EFT payment in their bank's portal. Dutchman Bridge will receive a callback once authorization is complete and credit the wallet accordingly.
+  </Tab>
+</Tabs>
+
+**List funding charges**
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/funding/charges \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+Charge lifecycle statuses: `pending` → `completed` or `failed`. Listen for webhook events to react to status changes without polling.
+
+## Checking Credit
+
+After a deposit is confirmed — whether via virtual account or funding charge — the customer's fiat balance is updated immediately. Retrieve the latest balance at any time:
+
+```bash
+curl https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_abc123/balance \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "fiat": {
+      "amount": "10000",
+      "currency": "NGN"
+    },
+    "usdt": {
+      "amount": "0.00"
+    }
+  }
+}
+```
+
+For real-time credit notifications without polling, configure a webhook endpoint to receive deposit events. See the [Webhooks guide](/guides/webhooks) for setup instructions.

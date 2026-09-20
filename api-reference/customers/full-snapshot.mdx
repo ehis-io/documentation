@@ -1,0 +1,141 @@
+---
+title: "GET /api/v1/partner/v1/customers/{customerId}/full — Full Snapshot"
+sidebarTitle: "Full Snapshot"
+description: "Retrieve a customer's complete snapshot in one call — profile, KYC status, and wallet balances combined."
+---
+
+Rather than making three separate requests for profile, KYC status, and wallet balances, this endpoint returns all of that data in a single response. It is the most efficient way to hydrate a customer view that needs to show the customer's identity state and available funds at the same time.
+
+## Endpoint
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/full
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+## Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID returned at registration.
+</ParamField>
+
+## Response
+
+All responses follow the `{ success, data }` envelope. On success, `data` contains three top-level objects: `profile`, `kyc`, and `wallet`.
+
+<ResponseField name="profile" type="object">
+  Core profile information for the customer.
+  <Expandable title="profile fields">
+    <ResponseField name="id" type="string">
+      Unique customer ID.
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      Customer's email address.
+    </ResponseField>
+    <ResponseField name="firstName" type="string">
+      Customer's first name.
+    </ResponseField>
+    <ResponseField name="lastName" type="string">
+      Customer's last name.
+    </ResponseField>
+    <ResponseField name="country" type="string">
+      ISO 3166-1 alpha-2 country code.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Account status — `active` or `suspended`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="kyc" type="object">
+  Current KYC verification state across all tiers.
+  <Expandable title="kyc fields">
+    <ResponseField name="overallStatus" type="string">
+      The customer's overall KYC status, reflecting the highest approved tier.
+    </ResponseField>
+    <ResponseField name="tiers" type="array">
+      An array of tier-level status objects.
+      <Expandable title="tiers item fields">
+        <ResponseField name="tier" type="number">
+          The verification tier number (1, 2, or 3).
+        </ResponseField>
+        <ResponseField name="status" type="string">
+          Status for this tier — e.g. `pending`, `approved`, `rejected`, or `not_submitted`.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="wallet" type="object">
+  The customer's current wallet balances.
+  <Expandable title="wallet fields">
+    <ResponseField name="usdt" type="string">
+      Current USDT balance as a decimal string.
+    </ResponseField>
+    <ResponseField name="fiat" type="object">
+      <Expandable title="fiat fields">
+        <ResponseField name="currency" type="string">
+          The customer's local fiat currency code (e.g., `NGN`).
+        </ResponseField>
+        <ResponseField name="amount" type="string">
+          Current fiat balance as a decimal string.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/full \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "profile": {
+      "id": "cust_01HXYZ1234ABCDEF",
+      "email": "amaka.obi@example.com",
+      "firstName": "Amaka",
+      "lastName": "Obi",
+      "country": "NG",
+      "status": "active"
+    },
+    "kyc": {
+      "overallStatus": "tier1_approved",
+      "tiers": [
+        { "tier": 1, "status": "approved" },
+        { "tier": 2, "status": "not_submitted" },
+        { "tier": 3, "status": "not_submitted" }
+      ]
+    },
+    "wallet": {
+      "usdt": "120.50",
+      "fiat": {
+        "currency": "NGN",
+        "amount": "185000.00"
+      }
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+<Tip>
+  Use this endpoint to hydrate a customer dashboard screen in a single request. It saves two round-trips compared to calling the profile, KYC, and balance endpoints separately — which is especially valuable on mobile or low-latency-sensitive UIs.
+</Tip>

@@ -1,0 +1,245 @@
+---
+title: "On-Chain Send Endpoints — Networks, Quote, and Submit"
+sidebarTitle: "Send"
+description: "List available blockchain networks, price an on-chain USDT/USDC send, and submit the transfer to an external wallet address."
+---
+
+The on-chain send endpoints let customers transfer USDT or USDC from their Dutchman Bridge wallet to any external wallet address on a supported blockchain network. The recommended flow is: fetch available networks to present to the customer, request a quote so the customer can review fees and the total debit, then submit the send once the customer confirms.
+
+<Warning>
+  Blockchain transactions are **irreversible**. Once submitted, a send cannot be cancelled or recalled. Always show the customer the `toAddress`, `amount`, and `fee` from the quote response and ask them to confirm before calling the submit endpoint.
+</Warning>
+
+## Endpoints
+
+```
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/send/networks
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/send/quote
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/send
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## GET — Available Networks
+
+Returns the list of blockchain networks the customer can currently send on, along with the network fee and the minimum and maximum send amounts. Use this response to populate a network selector in your UI.
+
+### Response Fields (per network object)
+
+<ResponseField name="network" type="string">
+  The blockchain network identifier (e.g., `tron`, `ethereum`, `bsc`).
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The stablecoin available on this network (e.g., `USDT`, `USDC`).
+</ResponseField>
+
+<ResponseField name="fee" type="string">
+  The flat network fee charged for a send on this network, denominated in the same stablecoin.
+</ResponseField>
+
+<ResponseField name="minimum" type="string">
+  The minimum send amount allowed on this network (inclusive).
+</ResponseField>
+
+<ResponseField name="maximum" type="string">
+  The maximum send amount allowed on this network (inclusive).
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/send/networks \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "network": "tron",
+      "currency": "USDT",
+      "fee": "1.00",
+      "minimum": "5.00",
+      "maximum": "50000.00"
+    },
+    {
+      "network": "ethereum",
+      "currency": "USDT",
+      "fee": "3.50",
+      "minimum": "10.00",
+      "maximum": "50000.00"
+    },
+    {
+      "network": "bsc",
+      "currency": "USDC",
+      "fee": "0.50",
+      "minimum": "5.00",
+      "maximum": "50000.00"
+    }
+  ]
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Send Quote
+
+Price an on-chain send before submitting. Returns the network fee and the total amount that will be debited from the customer's wallet. Present this to the customer for confirmation.
+
+### Request Body
+
+<ParamField body="network" type="string" required>
+  The blockchain network to send on. Use a value from the `network` field returned by the networks endpoint.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  The amount of stablecoin to send, as a string decimal (e.g., `"100.00"`).
+</ParamField>
+
+<ParamField body="toAddress" type="string" required>
+  The recipient's external wallet address on the specified network.
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="amount" type="string">
+  The send amount as provided in the request.
+</ResponseField>
+
+<ResponseField name="fee" type="string">
+  The network fee that will be charged in addition to the send amount.
+</ResponseField>
+
+<ResponseField name="totalDebit" type="string">
+  The total amount that will be deducted from the customer's balance (`amount + fee`).
+</ResponseField>
+
+<ResponseField name="network" type="string">
+  The blockchain network for this quote.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/send/quote \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "network": "tron",
+    "amount": "100.00",
+    "toAddress": "TQn9Y2khDD95J42FQnKgm7P4bFcZFCZhYn"
+  }'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "amount": "100.00",
+    "fee": "1.00",
+    "totalDebit": "101.00",
+    "network": "tron"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Submit Send
+
+Execute the on-chain transfer. Deducts the send amount plus the network fee from the customer's stablecoin balance and broadcasts the transaction to the blockchain. Returns a `sendId` for tracking and a `txHash` once the transaction is broadcast.
+
+### Request Body
+
+<ParamField body="network" type="string" required>
+  The blockchain network to send on (e.g., `tron`, `ethereum`, `bsc`).
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  The amount of stablecoin to send, as a string decimal (e.g., `"100.00"`).
+</ParamField>
+
+<ParamField body="toAddress" type="string" required>
+  The recipient's external wallet address. Validate this with the customer before submitting — transactions to wrong addresses cannot be reversed.
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="sendId" type="string">
+  Unique identifier for this send transaction. Use it to track status or reconcile records.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Initial status of the send. Typically `pending` immediately after submission.
+</ResponseField>
+
+<ResponseField name="txHash" type="string">
+  The on-chain transaction hash. May be `null` if the transaction has not yet been broadcast.
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  The send amount that was deducted from the customer's balance.
+</ResponseField>
+
+<ResponseField name="fee" type="string">
+  The network fee charged for this send.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/send \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "network": "tron",
+    "amount": "100.00",
+    "toAddress": "TQn9Y2khDD95J42FQnKgm7P4bFcZFCZhYn"
+  }'
+```
+
+```json Request Body
+{
+  "network": "tron",
+  "amount": "100.00",
+  "toAddress": "TQn9Y2khDD95J42FQnKgm7P4bFcZFCZhYn"
+}
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "sendId": "send_01HABC456DEF",
+    "status": "pending",
+    "txHash": null,
+    "amount": "100.00",
+    "fee": "1.00"
+  }
+}
+```
+
+</CodeGroup>

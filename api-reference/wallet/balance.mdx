@@ -1,0 +1,113 @@
+---
+title: "GET /api/v1/partner/v1/customers/{customerId}/balance — Balance"
+sidebarTitle: "Balance"
+description: "Retrieve a customer's current USDT and fiat wallet balances. Also covers the real-time Server-Sent Events balance stream."
+---
+
+Every customer on Dutchman Bridge holds two balances: a USDT stablecoin balance and a local fiat balance denominated in their country's currency. This page covers both the standard polling endpoint for fetching balances on demand and the Server-Sent Events (SSE) stream endpoint for receiving live updates as balances change.
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## 1. GET Balance
+
+Fetch the customer's current USDT and fiat balances in a single request.
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/balance
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Response
+
+All responses follow the `{ success, data }` envelope.
+
+<ResponseField name="usdt" type="string">
+  The customer's current USDT balance as a decimal string (e.g., `"120.50"`).
+</ResponseField>
+
+<ResponseField name="fiat" type="object">
+  The customer's local fiat balance.
+  <Expandable title="fiat fields">
+    <ResponseField name="currency" type="string">
+      The ISO 4217 currency code for the customer's local fiat currency (e.g., `NGN`).
+    </ResponseField>
+    <ResponseField name="amount" type="string">
+      The current fiat balance as a decimal string (e.g., `"185000.00"`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/balance \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "usdt": "120.50",
+    "fiat": {
+      "currency": "NGN",
+      "amount": "185000.00"
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## 2. GET Balance Stream (SSE)
+
+Opens a persistent Server-Sent Events connection that emits the customer's current balance in real time on every credit or debit. The connection stays open and pushes a new balance event each time the customer's USDT or fiat balance changes.
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/balance/stream
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Event Payload
+
+Each emitted event carries the same shape as the standard balance response:
+
+```
+data: {"usdt":"121.00","fiat":{"currency":"NGN","amount":"185000.00"}}
+```
+
+### Example
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/balance/stream \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Accept: text/event-stream'
+```
+
+<Tip>
+  Use the balance stream endpoint to power a live balance display in your UI. Instead of polling on a timer, subscribe once and let the server push updates on every credit or debit — dramatically reducing unnecessary requests and keeping the UI instantly in sync.
+</Tip>

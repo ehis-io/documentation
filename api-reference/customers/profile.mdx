@@ -1,0 +1,244 @@
+---
+title: "Customer Profile Endpoints — Get and Update"
+sidebarTitle: "Profile"
+description: "Retrieve or update a customer's profile fields including name, phone, and address. Also covers password change and withdrawal history."
+---
+
+The profile endpoints let you read and modify the mutable parts of a customer's record — name, phone, and other contact details — as well as change their password and delete their account if needed. You can also pull a paginated history of all past withdrawals and payouts for a given customer. All endpoints below are scoped to a specific customer via the `customerId` path parameter.
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## GET Profile
+
+Retrieve the current profile for a customer.
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/profile
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/profile \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "id": "cust_01HXYZ1234ABCDEF",
+    "email": "amaka.obi@example.com",
+    "firstName": "Amaka",
+    "lastName": "Obi",
+    "phone": "+2348012345678",
+    "country": "NG",
+    "status": "active",
+    "kycStatus": "tier1_approved",
+    "createdAt": "2024-06-15T09:23:11.000Z"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## PATCH Profile
+
+Update one or more mutable profile fields. Only the fields you include in the request body are updated; omitted fields remain unchanged.
+
+```
+PATCH https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/profile
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Request Body
+
+<ParamField body="firstName" type="string">
+  Updated first name for the customer.
+</ParamField>
+
+<ParamField body="lastName" type="string">
+  Updated last name for the customer.
+</ParamField>
+
+<ParamField body="phone" type="string">
+  Updated phone number in E.164 format (e.g., `+2348012345678`).
+</ParamField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request PATCH \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/profile \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "firstName": "Chiamaka",
+    "phone": "+2347098765432"
+  }'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "id": "cust_01HXYZ1234ABCDEF",
+    "email": "amaka.obi@example.com",
+    "firstName": "Chiamaka",
+    "lastName": "Obi",
+    "phone": "+2347098765432",
+    "country": "NG",
+    "status": "active",
+    "kycStatus": "tier1_approved",
+    "createdAt": "2024-06-15T09:23:11.000Z"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## PATCH Change Password
+
+Change the customer's account password. Requires the current password for verification.
+
+```
+PATCH https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/change-password
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Request Body
+
+<ParamField body="oldPassword" type="string" required>
+  The customer's current password.
+</ParamField>
+
+<ParamField body="newPassword" type="string" required>
+  The new password to set for the customer's account.
+</ParamField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request PATCH \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/change-password \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "oldPassword": "S3cur3P@ss!",
+    "newPassword": "N3wS3cur3P@ss!"
+  }'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "message": "Password updated successfully."
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## DELETE Account
+
+Permanently delete a customer account. This action removes the customer and all associated data from your partner account.
+
+```
+DELETE https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID of the account to delete.
+</ParamField>
+
+<Warning>
+  Account deletion is **permanent and cannot be undone**. All customer data, balances, and transaction history will be irretrievably removed. Ensure any remaining balance is withdrawn before calling this endpoint.
+</Warning>
+
+---
+
+## GET Withdrawal History
+
+Retrieve the full withdrawal and payout history for a customer, sorted newest first. This list covers all outbound movements including bank withdrawals and cross-border payouts.
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/withdrawals
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/withdrawals \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "id": "wdl_01HY1234ABCD",
+      "amount": "50000.00",
+      "currency": "NGN",
+      "status": "completed",
+      "bankAccount": {
+        "bankName": "First Bank",
+        "accountNumber": "3012345678",
+        "accountName": "AMAKA OBI"
+      },
+      "createdAt": "2024-06-20T14:10:00.000Z"
+    }
+  ]
+}
+```
+
+</CodeGroup>

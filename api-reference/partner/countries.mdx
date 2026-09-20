@@ -1,0 +1,85 @@
+---
+title: "GET /api/v1/partner/v1/countries — Enabled Countries"
+sidebarTitle: "Countries"
+description: "List countries currently enabled for customer onboarding. Use country codes from this response when registering customers."
+---
+
+This endpoint returns all countries that your partner account is currently allowed to onboard customers from. Each entry includes the country code, name, local fiat currency, and a summary of KYC requirements. You should use the `code` values from this response when setting the `country` field during customer registration.
+
+<Note>
+  Only countries returned by this endpoint can be used as the `country` field when calling the [Register Customer](/api-reference/customers/register) endpoint. Supplying a country code not present in this list will result in a validation error.
+</Note>
+
+## Endpoint
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/countries
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+## Response
+
+The `data` field contains an array of `PartnerCountryDto` objects, one per enabled country.
+
+<ResponseField name="code" type="string">
+  The ISO 3166-1 alpha-2 country code (e.g., `NG`, `GH`). Use this as the `country` field when registering customers.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The full English display name of the country.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The ISO 4217 code of the local fiat currency used in this country (e.g., `NGN`, `GHS`).
+</ResponseField>
+
+<ResponseField name="kycRequirements" type="object">
+  A summary of the KYC tiers and document requirements applicable to customers from this country.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/countries \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "code": "NG",
+      "name": "Nigeria",
+      "currency": "NGN",
+      "kycRequirements": {
+        "tier1": ["bvn", "nin"],
+        "tier2": ["government_id", "selfie"],
+        "tier3": ["date_of_birth", "residential_address"]
+      }
+    },
+    {
+      "code": "GH",
+      "name": "Ghana",
+      "currency": "GHS",
+      "kycRequirements": {
+        "tier1": ["ghana_card"],
+        "tier2": ["government_id", "selfie"],
+        "tier3": ["date_of_birth", "residential_address"]
+      }
+    }
+  ]
+}
+```
+
+</CodeGroup>

@@ -1,0 +1,325 @@
+---
+title: "Global Send Endpoints — Cross-Border Payouts"
+sidebarTitle: "Global Send"
+description: "List cross-border corridors, get quotes, and initiate international payouts for Tier 3 verified customers."
+---
+
+Global Send enables cross-border payouts from a customer's Dutchman Bridge balance to a bank account in another country. Before a customer can use this feature, they must have completed Tier 3 KYC. The typical flow is: check verification status, fetch available corridors, request a quote with the exchange rate and fees, then initiate the payout with the beneficiary's bank details.
+
+<Warning>
+  Global Send requires **Tier 3 KYC**. Customers who have not completed Tier 3 verification will receive a `403` error when attempting to get a quote or initiate a payout. Direct them to complete [Tier 3 KYC](/api-reference/customers/kyc) first.
+</Warning>
+
+## Endpoints
+
+```
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/global-send/verification
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/global-send/corridors
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/global-send/quote
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/global-send/initiate
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## GET — Tier 3 Verification Status
+
+Re-checks the customer's Tier 3 verification status. Use this before presenting Global Send UI to confirm the customer is eligible.
+
+### Response Fields
+
+<ResponseField name="verified" type="boolean">
+  `true` if the customer has completed and been approved for Tier 3 KYC.
+</ResponseField>
+
+<ResponseField name="tier" type="number">
+  The tier this status applies to. Always `3` for this endpoint.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The verification record status (e.g., `approved`, `pending`, `rejected`).
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/global-send/verification \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "verified": true,
+    "tier": 3,
+    "status": "approved"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## GET — Available Corridors
+
+Returns the list of countries the customer can send to, along with the destination currency, payment rails, and the minimum and maximum payout amounts.
+
+### Response Fields (per corridor object)
+
+<ResponseField name="country" type="string">
+  The ISO 3166-1 alpha-2 country code of the destination country.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The destination fiat currency code (e.g., `GHS`, `KES`, `UGX`).
+</ResponseField>
+
+<ResponseField name="rails" type="string">
+  The payment rail used for the corridor (e.g., `bank_transfer`, `mobile_money`).
+</ResponseField>
+
+<ResponseField name="minAmount" type="number">
+  The minimum payout amount in the source currency.
+</ResponseField>
+
+<ResponseField name="maxAmount" type="number">
+  The maximum payout amount in the source currency.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/global-send/corridors \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "country": "GH",
+      "currency": "GHS",
+      "rails": "bank_transfer",
+      "minAmount": 1000,
+      "maxAmount": 5000000
+    },
+    {
+      "country": "KE",
+      "currency": "KES",
+      "rails": "mobile_money",
+      "minAmount": 1000,
+      "maxAmount": 2000000
+    }
+  ]
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Global Send Quote
+
+Price a cross-border send before initiating it. Returns the destination amount after conversion, the exchange rate applied, the fee, and the total amount that will be debited from the customer's source balance.
+
+### Request Body
+
+<ParamField body="destinationCountry" type="string" required>
+  The ISO 3166-1 alpha-2 country code of the recipient's country.
+</ParamField>
+
+<ParamField body="destinationCurrency" type="string" required>
+  The currency the recipient will receive (e.g., `GHS`, `KES`).
+</ParamField>
+
+<ParamField body="sendAmount" type="number" required>
+  The amount to send, denominated in the `sourceCurrency`.
+</ParamField>
+
+<ParamField body="sourceCurrency" type="string" required>
+  The currency of the customer's balance to debit (e.g., `NGN`, `ZAR`).
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="destinationAmount" type="number">
+  The amount the recipient will receive in the destination currency.
+</ResponseField>
+
+<ResponseField name="exchangeRate" type="number">
+  The exchange rate applied from source to destination currency.
+</ResponseField>
+
+<ResponseField name="fee" type="number">
+  The fee charged for this payout, in the source currency.
+</ResponseField>
+
+<ResponseField name="totalDebit" type="number">
+  The total amount that will be deducted from the customer's balance (`sendAmount + fee`).
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/global-send/quote \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "destinationCountry": "GH",
+    "destinationCurrency": "GHS",
+    "sendAmount": 50000,
+    "sourceCurrency": "NGN"
+  }'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "destinationAmount": 184.50,
+    "exchangeRate": 0.003690,
+    "fee": 500,
+    "totalDebit": 50500
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Initiate Global Send
+
+Submit the cross-border payout. Deducts the send amount and fee from the customer's source balance and routes the payment to the beneficiary's bank account. Returns a `payoutId` for tracking.
+
+### Request Body
+
+<ParamField body="destinationCountry" type="string" required>
+  The ISO 3166-1 alpha-2 country code of the recipient's country.
+</ParamField>
+
+<ParamField body="destinationCurrency" type="string" required>
+  The currency the recipient will receive.
+</ParamField>
+
+<ParamField body="sendAmount" type="number" required>
+  The amount to send, denominated in the `sourceCurrency`.
+</ParamField>
+
+<ParamField body="sourceCurrency" type="string" required>
+  The currency of the customer's balance to debit.
+</ParamField>
+
+<ParamField body="beneficiary" type="object" required>
+  Details of the recipient's bank account.
+
+  <Expandable title="beneficiary fields">
+
+    <ParamField body="firstName" type="string" required>
+      The beneficiary's first name.
+    </ParamField>
+
+    <ParamField body="lastName" type="string" required>
+      The beneficiary's last name.
+    </ParamField>
+
+    <ParamField body="accountNumber" type="string" required>
+      The beneficiary's bank account number or IBAN.
+    </ParamField>
+
+    <ParamField body="bankCode" type="string" required>
+      The beneficiary's bank code or sort code in the destination country.
+    </ParamField>
+
+    <ParamField body="country" type="string" required>
+      The ISO 3166-1 alpha-2 country code where the beneficiary's bank account is held.
+    </ParamField>
+
+  </Expandable>
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="payoutId" type="string">
+  Unique identifier for this global send payout. Use it to track the payment status.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Initial status of the payout. Typically `pending` immediately after initiation.
+</ResponseField>
+
+<ResponseField name="destinationAmount" type="number">
+  The amount that will be credited to the beneficiary in the destination currency.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ/global-send/initiate \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "destinationCountry": "GH",
+    "destinationCurrency": "GHS",
+    "sendAmount": 50000,
+    "sourceCurrency": "NGN",
+    "beneficiary": {
+      "firstName": "Kwame",
+      "lastName": "Mensah",
+      "accountNumber": "1234567890",
+      "bankCode": "030100",
+      "country": "GH"
+    }
+  }'
+```
+
+```json Request Body
+{
+  "destinationCountry": "GH",
+  "destinationCurrency": "GHS",
+  "sendAmount": 50000,
+  "sourceCurrency": "NGN",
+  "beneficiary": {
+    "firstName": "Kwame",
+    "lastName": "Mensah",
+    "accountNumber": "1234567890",
+    "bankCode": "030100",
+    "country": "GH"
+  }
+}
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "payoutId": "gsp_01HABC789GHI",
+    "status": "pending",
+    "destinationAmount": 184.50
+  }
+}
+```
+
+</CodeGroup>

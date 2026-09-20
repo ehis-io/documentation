@@ -1,0 +1,204 @@
+---
+title: "Webhook Delivery Log and Replay"
+sidebarTitle: "Deliveries"
+description: "View your webhook delivery log, inspect individual delivery payloads, and replay failed or missed events."
+---
+
+The delivery log gives you full visibility into every event notification Dutchman Bridge has attempted to send to your endpoint. Each entry records the event type, delivery status, HTTP response code, and timestamp. If a delivery failed or your endpoint was temporarily unavailable, you can replay any individual delivery to re-send the exact same payload.
+
+## Endpoints
+
+```
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/webhook/deliveries
+GET  https://app.dutchmannetwork.online/api/v1/partner/v1/webhook/deliveries/{id}
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/webhook/deliveries/{id}/replay
+```
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## GET — List Deliveries
+
+Returns your webhook delivery log, newest first. Results are cursor-paginated.
+
+### Query Parameters
+
+<ParamField query="cursor" type="string">
+  Pagination cursor from the previous response's `meta.nextCursor`. Omit to start from the most recent delivery.
+</ParamField>
+
+<ParamField query="limit" type="number">
+  Number of records per page. Defaults to 20.
+</ParamField>
+
+### Response Fields (per delivery object)
+
+<ResponseField name="id" type="string">
+  Unique identifier for the delivery attempt. Pass this to the inspect or replay endpoints.
+</ResponseField>
+
+<ResponseField name="event" type="string">
+  The event type that triggered the delivery (e.g., `withdrawal.completed`, `funding.charge.settled`).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Delivery status. One of `pending`, `delivered`, or `failed`.
+
+  | Status | Description |
+  |---|---|
+  | `pending` | The delivery is queued or being retried. |
+  | `delivered` | Your endpoint returned a `2xx` HTTP response. |
+  | `failed` | All delivery attempts exhausted without a `2xx` response. |
+</ResponseField>
+
+<ResponseField name="attemptedAt" type="string">
+  ISO 8601 timestamp of the most recent delivery attempt.
+</ResponseField>
+
+<ResponseField name="responseCode" type="number">
+  The HTTP status code returned by your endpoint on the last attempt. `null` if the request did not reach your server.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url 'https://app.dutchmannetwork.online/api/v1/partner/v1/webhook/deliveries?limit=5' \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": [
+    {
+      "id": "wdlv_01HABC001",
+      "event": "withdrawal.completed",
+      "status": "delivered",
+      "attemptedAt": "2024-07-10T14:35:02.000Z",
+      "responseCode": 200
+    },
+    {
+      "id": "wdlv_01HABC002",
+      "event": "funding.charge.settled",
+      "status": "failed",
+      "attemptedAt": "2024-07-10T14:36:10.000Z",
+      "responseCode": 500
+    }
+  ],
+  "meta": {
+    "nextCursor": "eyJpZCI6IndkbHZfMDFIQUJDMDAyIn0=",
+    "hasMore": true
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## GET — Inspect Delivery
+
+Returns the full details of a single delivery attempt, including the complete JSON payload that was sent to your endpoint and the response body your server returned.
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The delivery ID returned by the list deliveries endpoint.
+</ParamField>
+
+### Response Fields
+
+All fields from the list response, plus:
+
+<ResponseField name="payload" type="object">
+  The full JSON body that was sent to your webhook endpoint for this delivery.
+</ResponseField>
+
+<ResponseField name="responseBody" type="string">
+  The response body returned by your endpoint. Useful for diagnosing why a delivery was marked as failed.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/webhook/deliveries/wdlv_01HABC001 \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "id": "wdlv_01HABC001",
+    "event": "withdrawal.completed",
+    "status": "delivered",
+    "attemptedAt": "2024-07-10T14:35:02.000Z",
+    "responseCode": 200,
+    "payload": {
+      "event": "withdrawal.completed",
+      "customerId": "cust_01HXYZ",
+      "data": {
+        "withdrawalId": "wdl_01HABC123XYZ",
+        "status": "completed",
+        "amount": 50000,
+        "currency": "NGN"
+      }
+    },
+    "responseBody": "OK"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## POST — Replay Delivery
+
+Re-sends a delivery using the exact same payload as the original attempt. Use this to recover from missed events caused by downtime or endpoint errors. A replay creates a new delivery record with its own ID and status tracking.
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The ID of the delivery to replay.
+</ParamField>
+
+No request body is needed.
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/webhook/deliveries/wdlv_01HABC002/replay \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+```json Response (200)
+{
+  "success": true,
+  "data": {
+    "id": "wdlv_01HABC003",
+    "event": "funding.charge.settled",
+    "status": "pending",
+    "attemptedAt": null,
+    "responseCode": null
+  }
+}
+```
+
+</CodeGroup>

@@ -1,0 +1,338 @@
+---
+title: "KYC Verification Endpoints for Customers"
+sidebarTitle: "KYC"
+description: "API reference for all KYC verification endpoints: checking status, uploading documents, and submitting Tier 1, 2, and 3 verification."
+---
+
+Dutchman Bridge uses a three-tier KYC model. Tier 1 verifies identity via BVN and NIN; Tier 2 requires a government-issued ID document and a selfie; Tier 3 collects date of birth and residential address for customers who need access to cross-border corridors. The endpoints below cover the full lifecycle: checking where a customer stands, uploading supporting documents, and submitting each tier. All paths are scoped to a `customerId`.
+
+## Authentication
+
+All requests must include your partner API key as a header:
+
+```
+x-api-key: YOUR_API_KEY
+```
+
+---
+
+## 1. GET Verification Summary
+
+Returns a high-level summary of the customer's KYC state across all tiers and indicates what the customer should submit next.
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/verification
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Response
+
+<ResponseField name="tiers" type="array">
+  An array of tier status objects, one per verification tier.
+  <Expandable title="tier item fields">
+    <ResponseField name="tier" type="number">
+      The tier number (1, 2, or 3).
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      The current status for this tier — e.g. `not_submitted`, `pending`, `approved`, `rejected`.
+    </ResponseField>
+    <ResponseField name="required" type="boolean">
+      Whether this tier must be completed before the customer can perform their next action.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="nextAction" type="string">
+  A string identifier indicating the next step the customer should take (e.g., `submit_tier1`, `submit_tier2`, `complete`).
+</ResponseField>
+
+---
+
+## 2. GET KYC Records
+
+Returns the customer's full KYC submission history, newest first. Useful for displaying submission status and review outcomes.
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/kyc
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Response
+
+Returns a paginated list of KYC records. Each record reflects one submission attempt.
+
+<ResponseField name="data" type="array">
+  Array of KYC record objects.
+</ResponseField>
+
+<ResponseField name="meta" type="object">
+  Pagination metadata.
+  <Expandable title="meta fields">
+    <ResponseField name="nextCursor" type="string">
+      Cursor to pass as `cursor` in the next request to get the following page.
+    </ResponseField>
+    <ResponseField name="hasMore" type="boolean">
+      Whether more records exist beyond this page.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## 3. GET Re-verification Requests
+
+Returns any open re-verification requests raised by a compliance admin for this customer. Poll or check this endpoint after a customer's KYC submission is reviewed to surface required re-submissions.
+
+```
+GET https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/kyc/reverification
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+---
+
+## 4. POST Upload Document
+
+Upload a KYC document (government-issued ID or selfie photo) on behalf of a customer. This is a multipart form upload. The returned `documentId` is used in subsequent tier submission calls.
+
+```
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/kyc/documents
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Request (multipart/form-data)
+
+<ParamField body="file" type="file" required>
+  The document image file to upload (JPEG or PNG recommended).
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  The type of document being uploaded. Must be one of:
+  - `id_document` — a government-issued ID (passport, national ID, driver's licence)
+  - `selfie` — a selfie photo of the customer
+</ParamField>
+
+### Response
+
+<ResponseField name="documentId" type="string">
+  Unique identifier for the uploaded document. Pass this as `documentId` or `selfieId` when submitting Tier 2, or as `documentId` in a selfie-check call.
+</ResponseField>
+
+### Example
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/kyc/documents \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --form 'file=@/path/to/national_id.jpg' \
+  --form 'type=id_document'
+```
+
+```json Response (201)
+{
+  "success": true,
+  "data": {
+    "documentId": "doc_01HXYZ9876QRST"
+  }
+}
+```
+
+---
+
+## 5. POST Selfie Check
+
+Validate a selfie's quality before including it in a Tier 2 submission. This pre-check catches common issues (blur, poor lighting, face not detected) early and avoids a rejection cycle.
+
+```
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/kyc/selfie-check
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Request Body
+
+<ParamField body="documentId" type="string" required>
+  The `documentId` returned from a prior selfie upload to `/kyc/documents`.
+</ParamField>
+
+### Response
+
+<ResponseField name="passed" type="boolean">
+  Whether the selfie meets quality requirements for submission.
+</ResponseField>
+
+<ResponseField name="issues" type="array">
+  A list of detected quality issues if `passed` is `false` (e.g., `blur_detected`, `face_not_found`).
+</ResponseField>
+
+---
+
+## 6. POST Tier 1 Submission
+
+Submit Tier 1 verification using the customer's BVN (Bank Verification Number) and NIN (National Identification Number). Tier 1 is required before the customer can transact.
+
+```
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/kyc/tier1
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Request Body
+
+<ParamField body="bvn" type="string" required>
+  The customer's 11-digit Bank Verification Number.
+</ParamField>
+
+<ParamField body="nin" type="string" required>
+  The customer's National Identification Number.
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="string">
+  Submission status — typically `pending` while the verification is being processed.
+</ResponseField>
+
+<ResponseField name="tier" type="number">
+  The tier that was submitted (`1`).
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://app.dutchmannetwork.online/api/v1/partner/v1/customers/cust_01HXYZ1234ABCDEF/kyc/tier1 \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "bvn": "12345678901",
+    "nin": "98765432100"
+  }'
+```
+
+```json Response (201)
+{
+  "success": true,
+  "data": {
+    "tier": 1,
+    "status": "pending"
+  }
+}
+```
+
+</CodeGroup>
+
+---
+
+## 7. POST Tier 2 Submission
+
+Submit Tier 2 verification using the document IDs obtained from prior `/kyc/documents` uploads. Tier 2 requires both a government-issued ID and a selfie.
+
+```
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/kyc/tier2
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Request Body
+
+<ParamField body="documentId" type="string" required>
+  The `documentId` from the government-issued ID document upload.
+</ParamField>
+
+<ParamField body="selfieId" type="string" required>
+  The `documentId` from the selfie upload (optionally pre-validated with `/kyc/selfie-check`).
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="string">
+  Submission status — typically `pending` while under review.
+</ResponseField>
+
+<ResponseField name="tier" type="number">
+  The tier that was submitted (`2`).
+</ResponseField>
+
+---
+
+## 8. POST Tier 3 Submission
+
+Submit Tier 3 verification with the customer's date of birth and residential address. Tier 3 is required for customers who want to send money via cross-border corridors.
+
+```
+POST https://app.dutchmannetwork.online/api/v1/partner/v1/customers/{customerId}/kyc/tier3
+```
+
+### Path Parameters
+
+<ParamField path="customerId" type="string" required>
+  The unique customer ID.
+</ParamField>
+
+### Request Body
+
+<ParamField body="dateOfBirth" type="string" required>
+  Customer's date of birth in `YYYY-MM-DD` format (e.g., `1990-04-23`).
+</ParamField>
+
+<ParamField body="address" type="object" required>
+  Customer's current residential address.
+  <Expandable title="address fields">
+    <ParamField body="street" type="string" required>
+      Street address including house number.
+    </ParamField>
+    <ParamField body="city" type="string" required>
+      City or town.
+    </ParamField>
+    <ParamField body="state" type="string" required>
+      State, province, or region.
+    </ParamField>
+    <ParamField body="country" type="string" required>
+      ISO 3166-1 alpha-2 country code (e.g., `NG`).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="string">
+  Submission status — typically `pending` while under review.
+</ResponseField>
+
+<ResponseField name="tier" type="number">
+  The tier that was submitted (`3`).
+</ResponseField>
